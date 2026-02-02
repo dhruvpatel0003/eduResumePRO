@@ -1,3 +1,3 @@
 # eduResumePRO
 
-AI Resume Builder with Job Matching
+AI Resume Builder with Job Matching & Professor Feedback
