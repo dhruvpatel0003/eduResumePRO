@@ -1,0 +1,19 @@
+{
+  "name": "eduresume-pro",
+  "version": "1.0.0",
+  "description": "EduResume Pro - Resume creation platform",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
+    "start-backend": "npm run dev --prefix backend",
+    "start-frontend": "npm start --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "license": "MIT"
+}
