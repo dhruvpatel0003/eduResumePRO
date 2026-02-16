@@ -28,6 +28,7 @@ const Signup = () => {
 
     try {
       const data = await authService.signup(name, email, password, role);
+      console.log('Signup successful:', data);
       login(data.user, data.token);
       navigate('/dashboard');
     } catch (err) {

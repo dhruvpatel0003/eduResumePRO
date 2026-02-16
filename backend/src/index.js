@@ -3,6 +3,11 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
+const resumeRoutes = require('./routes/resumeRoutes');
+const templateRoutes = require('./routes/templateRoutes');
+const jobOpeningRoutes = require('./routes/jobOpeningRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +19,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
 
 // Database connection
 if (process.env.NODE_ENV !== 'test') {
@@ -33,6 +39,11 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/resumes', resumeRoutes);
+app.use('/api/templates', templateRoutes);
+app.use('/api/jobs', jobOpeningRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

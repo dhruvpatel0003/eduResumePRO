@@ -1,0 +1,119 @@
+.applications-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.applications-header {
+  margin-bottom: 30px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 20px;
+}
+
+.applications-header h1 {
+  font-size: 28px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.applications-header p {
+  color: #6b7280;
+}
+
+.applications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.application-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.application-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.app-header h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 20px;
+}
+
+.company {
+  color: #6b7280;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.status-badge {
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.app-details {
+  color: #4b5563;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.app-details p {
+  margin: 6px 0;
+}
+
+.feedback-section {
+  background-color: #f9fafb;
+  border-left: 4px solid #3b82f6;
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 4px;
+}
+
+.feedback-section p {
+  margin: 0;
+  color: #1f2937;
+}
+
+.application-card .btn-danger {
+  margin-top: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.empty-state a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.empty-state a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+  }
+
+  .status-badge {
+    margin-top: 12px;
+  }
+}
