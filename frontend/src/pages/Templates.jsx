@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import templateService from '../services/templateService';
+import Logo from '../components/Logo';
 import '../styles/templates.css';
 
 const Templates = () => {
@@ -31,6 +32,7 @@ const Templates = () => {
 
   return (
     <div className="templates-container">
+      <Logo />
       <div className="templates-header">
         <h1>Resume Templates</h1>
         <p>Choose a template and start building your resume</p>

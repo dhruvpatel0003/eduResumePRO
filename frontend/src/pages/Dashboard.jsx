@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -13,6 +14,7 @@ const Dashboard = () => {
 
   return (
     <div style={{ padding: '20px' }}>
+      <Logo />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1>Dashboard</h1>
         <button onClick={handleLogout} style={{ padding: '10px 20px', cursor: 'pointer' }}>

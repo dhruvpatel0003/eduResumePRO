@@ -18,6 +18,25 @@ code {
     monospace;
 }
 
+/* Page Logo */
+.page-logo {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+
+.page-logo a {
+  display: inline-block;
+}
+
+.page-logo img {
+  height: 64px;
+  width: auto;
+  /* background: rgba(255, 255, 255, 0.7); */
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* Global Styles */
 button {
   font-family: inherit;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import resumeService from '../services/resumeService';
 import { useAuth } from '../context/AuthContext';
+import Logo from '../components/Logo';
 import '../styles/resumes.css';
 
 const Resumes = () => {
@@ -49,6 +50,7 @@ const Resumes = () => {
 
   return (
     <div className="resumes-container">
+      <Logo />
       <div className="resumes-header">
         <h1>My Resumes</h1>
         <button className="btn-primary" onClick={() => window.location.href = '/resume/create'}>
