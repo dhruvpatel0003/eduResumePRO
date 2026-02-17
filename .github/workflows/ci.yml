@@ -2,9 +2,9 @@ name: CI - Tests & Security Scan
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, frontend-development]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, frontend-development]
 
 permissions:
   contents: read

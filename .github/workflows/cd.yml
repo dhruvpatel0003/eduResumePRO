@@ -2,11 +2,11 @@ name: CD - Build & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, frontend-development]
   workflow_run:
     workflows: ["CI - Tests & Security Scan"]
     types: [completed]
-    branches: [main]
+    branches: [main, frontend-development]
 
 env:
   REGISTRY: ghcr.io
