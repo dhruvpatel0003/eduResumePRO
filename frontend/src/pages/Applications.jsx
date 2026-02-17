@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import applicationService from '../services/applicationService';
-import Logo from '../components/Logo';
 import '../styles/applications.css';
 
 const Applications = () => {
@@ -50,7 +49,6 @@ const Applications = () => {
 
   return (
     <div className="applications-container">
-      <Logo />
       <div className="applications-header">
         <h1>My Applications</h1>
         <p>Track your job applications</p>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import jobService from '../services/jobService';
-import Logo from '../components/Logo';
 import '../styles/jobs.css';
 
 const Jobs = () => {
@@ -40,7 +39,6 @@ const Jobs = () => {
 
   return (
     <div className="jobs-container">
-      <Logo />
       <div className="jobs-header">
         <h1>Job Openings</h1>
         <div className="search-box">

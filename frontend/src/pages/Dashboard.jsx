@@ -1,28 +1,14 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import Logo from '../components/Logo';
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const { user } = useAuth();
 
   return (
-    <div style={{ padding: '20px' }}>
-      <Logo />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>Dashboard</h1>
-        <button onClick={handleLogout} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-          Logout
-        </button>
-      </div>
+    <div>
+      <h1 style={{ fontSize: '28px', color: '#1f2937', marginBottom: '24px' }}>Dashboard</h1>
 
-      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px' }}>
+      <div style={{ border: '1px solid #e5e7eb', padding: '20px', borderRadius: '8px', background: '#fff' }}>
         <h2>Welcome, {user?.name}!</h2>
         <p><strong>Email:</strong> {user?.email}</p>
         <p><strong>Role:</strong> {user?.role}</p>
@@ -30,7 +16,7 @@ const Dashboard = () => {
 
       <div style={{ marginTop: '30px' }}>
         <h3>Your Resumes</h3>
-        <p style={{ color: '#666' }}>No resumes yet. Start creating one!</p>
+        <p style={{ color: '#6b7280' }}>No resumes yet. Start creating one!</p>
       </div>
     </div>
   );

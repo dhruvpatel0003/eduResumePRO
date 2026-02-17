@@ -1,0 +1,360 @@
+:root {
+  --header-height: 56px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-transition: width 0.2s ease;
+}
+
+/* ========================
+   App Shell Layout
+   ======================== */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-shell-body {
+  display: flex;
+  flex: 1;
+}
+
+.app-shell-content {
+  flex: 1;
+  overflow-y: auto;
+  background: #f9fafb;
+  min-width: 0;
+  padding: 24px;
+}
+
+/* ========================
+   Header
+   ======================== */
+.app-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-height);
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-logo {
+  height: 36px;
+  width: auto;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-nav-tab {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.header-nav-tab:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.header-nav-tab.active {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ========================
+   Notification Bell
+   ======================== */
+.notification-bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s;
+}
+
+.notification-bell:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.notification-bell:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ========================
+   User Avatar
+   ======================== */
+.user-avatar-wrapper {
+  position: relative;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.user-avatar:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.avatar-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.avatar-dropdown-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.avatar-dropdown-header strong {
+  display: block;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.avatar-dropdown-header span {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.avatar-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: #1f2937;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.avatar-dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+/* ========================
+   Sidebar
+   ======================== */
+.app-shell-sidebar {
+  width: var(--sidebar-width);
+  min-height: calc(100vh - var(--header-height));
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: var(--sidebar-transition);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.app-shell-sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: 2px 8px;
+  color: #1f2937;
+  text-decoration: none;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+  white-space: nowrap;
+}
+
+.sidebar-nav-item:hover {
+  background-color: #f3f4f6;
+}
+
+.sidebar-nav-item.active {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.sidebar-nav-item .nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-nav-item .nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-shell-sidebar.collapsed .nav-label {
+  display: none;
+}
+
+.nav-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background-color: #dbeafe;
+  color: #0c4a6e;
+  margin-left: auto;
+}
+
+.app-shell-sidebar.collapsed .nav-badge {
+  display: none;
+}
+
+/* Sidebar Footer / Toggle */
+.sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  padding: 0;
+}
+
+.sidebar-toggle:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ========================
+   Placeholder Pages
+   ======================== */
+.page-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #6b7280;
+}
+
+.page-placeholder h1 {
+  font-size: 24px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 768px) {
+  .app-shell-sidebar {
+    width: var(--sidebar-collapsed-width);
+  }
+
+  .app-shell-sidebar .nav-label,
+  .app-shell-sidebar .nav-badge {
+    display: none;
+  }
+
+  .app-shell-sidebar.expanded-mobile {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    z-index: 90;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .app-shell-sidebar.expanded-mobile .nav-label,
+  .app-shell-sidebar.expanded-mobile .nav-badge {
+    display: inline;
+  }
+
+  .header-nav-tab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .app-shell-content {
+    padding: 16px;
+  }
+}
