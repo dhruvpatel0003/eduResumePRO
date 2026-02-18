@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import resumeService from '../services/resumeService';
-import { useAuth } from '../context/AuthContext';
+import DeleteModal from '../components/details/DeleteModal';
+import ShareModal from '../components/resumes/ShareModal';
 import '../styles/resumes.css';
+import '../styles/details.css';
 
 const Resumes = () => {
+  const navigate = useNavigate();
+
   const [resumes, setResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { user } = useAuth();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [successBanner] = useState('');
 
   useEffect(() => {
     fetchResumes();
@@ -16,6 +24,7 @@ const Resumes = () => {
   const fetchResumes = async () => {
     try {
       setLoading(true);
+      setError('');
       const data = await resumeService.getAll();
       setResumes(data);
     } catch (err) {
@@ -25,76 +34,140 @@ const Resumes = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this resume?')) {
-      try {
-        await resumeService.delete(id);
-        setResumes(resumes.filter(r => r._id !== id));
-      } catch (err) {
-        setError(err || 'Failed to delete resume');
-      }
-    }
+  const handleGenerateReport = () => {
+    if (!selectedResumeId) return;
+    navigate(`/report?resumeId=${selectedResumeId}`);
   };
 
-  const handlePublish = async (id) => {
+  const handleDelete = async () => {
+    if (!selectedResumeId) return;
     try {
-      const updated = await resumeService.publish(id);
-      setResumes(resumes.map(r => r._id === id ? updated : r));
+      await resumeService.delete(selectedResumeId);
+      setResumes((prev) => prev.filter((r) => r._id !== selectedResumeId));
+      setSelectedResumeId(null);
+      setShowDeleteModal(false);
     } catch (err) {
-      setError(err || 'Failed to publish resume');
+      setError(err || 'Failed to delete resume');
+      setShowDeleteModal(false);
     }
   };
 
-  if (loading) return <div style={{ padding: '20px' }}>Loading...</div>;
+  const handleShareSuccess = () => {
+    setShowShareModal(false);
+    navigate('/shared', { state: { shareSuccess: true } });
+  };
+
+  const handleRetry = () => {
+    setError('');
+    fetchResumes();
+  };
 
   return (
     <div className="resumes-container">
-      <div className="resumes-header">
-        <h1>My Resumes</h1>
-        <button className="btn-primary" onClick={() => window.location.href = '/resume/create'}>
-          Create New Resume
-        </button>
+      {/* Success Banner */}
+      {successBanner && (
+        <div className="resumes-success-banner">
+          <p>{successBanner}</p>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="resumes-toolbar">
+        <div className="resumes-toolbar-left">
+          <button
+            className="resumes-action-link"
+            disabled={!selectedResumeId || loading}
+            onClick={() => setShowShareModal(true)}
+          >
+            Shared with Professor
+          </button>
+          <button
+            className="resumes-action-link"
+            disabled={!selectedResumeId || loading}
+            onClick={handleGenerateReport}
+          >
+            Generate Report
+          </button>
+        </div>
+        <div className="resumes-toolbar-right">
+          <button
+            className="resumes-action-link resumes-action-link--danger"
+            disabled={!selectedResumeId || loading}
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {/* Error */}
+      {error && (
+        <div className="resumes-error">
+          <p>{error}</p>
+          <button className="resumes-action-link" onClick={handleRetry}>
+            Retry
+          </button>
+        </div>
+      )}
 
-      {resumes.length === 0 ? (
-        <div className="empty-state">
-          <p>No resumes yet. Create one to get started!</p>
+      {/* Loading */}
+      {loading ? (
+        <div className="resumes-loading">
+          <div className="resumes-spinner" />
+        </div>
+      ) : resumes.length === 0 ? (
+        /* Empty State */
+        <div className="resumes-empty">
+          <p>No resumes yet.</p>
+          <Link to="/details" className="resumes-empty-link">
+            Create a resume
+          </Link>
         </div>
       ) : (
-        <div className="resumes-grid">
-          {resumes.map(resume => (
-            <div key={resume._id} className="resume-card">
-              <h3>{resume.title}</h3>
-              <p className="resume-meta">
-                {resume.personalInfo?.fullName} • {resume.personalInfo?.email}
-              </p>
-              <div className="resume-stats">
-                <span>ATS Score: {resume.atsScore}</span>
-                <span className={`status ${resume.isPublished ? 'published' : 'draft'}`}>
-                  {resume.isPublished ? 'Published' : 'Draft'}
-                </span>
-              </div>
-              <div className="resume-actions">
-                <button className="btn-secondary" onClick={() => window.location.href = `/resume/${resume._id}`}>
-                  View
-                </button>
-                <button className="btn-secondary" onClick={() => window.location.href = `/resume/${resume._id}/edit`}>
-                  Edit
-                </button>
-                {!resume.isPublished && (
-                  <button className="btn-secondary" onClick={() => handlePublish(resume._id)}>
-                    Publish
-                  </button>
+        /* Resume Card Grid */
+        <div className="resumes-grid" role="radiogroup" aria-label="Select a resume">
+          {resumes.map((resume) => (
+            <label
+              key={resume._id}
+              className={`resumes-card${selectedResumeId === resume._id ? ' selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="resume-selection"
+                value={resume._id}
+                checked={selectedResumeId === resume._id}
+                onChange={() => setSelectedResumeId(resume._id)}
+                className="resumes-card-radio"
+                aria-label={resume.title}
+              />
+              <div className="resumes-card-thumbnail">
+                {resume.thumbnail ? (
+                  <img src={resume.thumbnail} alt={resume.title} />
+                ) : (
+                  <div className="resumes-card-thumbnail-placeholder" />
                 )}
-                <button className="btn-danger" onClick={() => handleDelete(resume._id)}>
-                  Delete
-                </button>
               </div>
-            </div>
+              <div className="resumes-card-name">{resume.title}</div>
+            </label>
           ))}
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <DeleteModal
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
+
+      {/* Share with Professor Modal */}
+      {showShareModal && selectedResumeId && (
+        <ShareModal
+          resumeId={selectedResumeId}
+          onShare={handleShareSuccess}
+          onCancel={() => setShowShareModal(false)}
+        />
       )}
     </div>
   );
