@@ -1,0 +1,272 @@
+/* ========================
+   Dashboard - Page Layout
+   ======================== */
+
+/* Filter Bar */
+.dashboard-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.dashboard-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-filter-left label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dashboard-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  min-width: 240px;
+}
+
+.dashboard-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dashboard-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-action-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.dashboard-action-link:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.dashboard-action-link:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.dashboard-action-link:disabled:hover {
+  background-color: transparent;
+}
+
+/* ========================
+   Job Openings Table
+   ======================== */
+.dashboard-job-list {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dashboard-job-header {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.dashboard-job-header span {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.dashboard-job-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s;
+  cursor: default;
+}
+
+.dashboard-job-row:last-child {
+  border-bottom: none;
+}
+
+.dashboard-job-row:hover {
+  background-color: #f9fafb;
+}
+
+.dashboard-job-cell {
+  font-size: 14px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-job-title {
+  font-weight: 500;
+}
+
+/* ========================
+   Pagination
+   ======================== */
+.dashboard-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 20px;
+}
+
+.dashboard-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 8px;
+  transition: all 0.15s;
+}
+
+.dashboard-page-btn:hover:not(:disabled):not(.active) {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.dashboard-page-btn.active {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+  font-weight: 500;
+}
+
+.dashboard-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dashboard-page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.dashboard-page-nav:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.dashboard-page-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ========================
+   Loading / Empty / Error
+   ======================== */
+.dashboard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.dashboard-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: dashboard-spin 0.6s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dashboard-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.dashboard-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.dashboard-error p {
+  margin: 0 0 12px 0;
+}
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 768px) {
+  .dashboard-filter-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .dashboard-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dashboard-job-header,
+  .dashboard-job-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-job-header span:nth-child(3),
+  .dashboard-job-header span:nth-child(4),
+  .dashboard-job-row .dashboard-job-cell:nth-child(3),
+  .dashboard-job-row .dashboard-job-cell:nth-child(4) {
+    display: none;
+  }
+}

@@ -8,16 +8,16 @@ const MOCK_RESUMES = [
 ];
 
 const MOCK_COMPANIES = [
-  { id: 'c1', name: 'Tesla India Inc.' },
+  { id: 'c1', name: 'Tesla Inc.' },
   { id: 'c2', name: 'Google LLC' },
   { id: 'c3', name: 'Amazon Web Services' },
 ];
 
 const MOCK_JOBS = {
   c1: [
-    { id: 'j1', title: 'Junior Software Developer', company: 'Tesla India Inc.', location: 'Bangalore' },
-    { id: 'j2', title: 'Senior Backend Engineer', company: 'Tesla India Inc.', location: 'Hyderabad' },
-    { id: 'j3', title: 'Data Analyst', company: 'Tesla India Inc.', location: 'Bangalore' },
+    { id: 'j1', title: 'Junior Software Developer', company: 'Tesla Inc.', location: 'Bangalore' },
+    { id: 'j2', title: 'Senior Backend Engineer', company: 'Tesla Inc.', location: 'Hyderabad' },
+    { id: 'j3', title: 'Data Analyst', company: 'Tesla Inc.', location: 'Bangalore' },
   ],
   c2: [
     { id: 'j4', title: 'Frontend Engineer', company: 'Google LLC', location: 'Mountain View' },
