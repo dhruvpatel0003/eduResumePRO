@@ -224,14 +224,14 @@ jobs:
     - name: Deploy Frontend to Render
       run: |
         curl -X POST \
-          https://api.render.com/webhooks/https://api.render.com/deploy/srv-d6aau675r7bs738v5s2g?key=n7Nk8XL-W5Y \
+          ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }} \
           -H 'Content-Type: application/json'
     
     # Backend Deploy Hook  
     - name: Deploy Backend to Render
       run: |
         curl -X POST \
-          https://api.render.com/webhooks/https://api.render.com/deploy/srv-d6aev2vpm1nc73d9v5sg?key=9VvtKCW9V9w   \
+          ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}   \
           -H 'Content-Type: application/json'
   ci-status:
     runs-on: ubuntu-latest
