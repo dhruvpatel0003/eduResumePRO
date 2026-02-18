@@ -207,7 +207,27 @@ jobs:
         with:
           sarif_file: 'frontend-trivy-results.sarif'
           category: 'trivy-frontend'
-
+  deploy-render:
+    needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dhruvpatel0003/eduresumepro'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Frontend Deploy Hook
+    - name: Deploy Frontend to Render
+      run: |
+        curl -X POST \
+          https://api.render.com/webhooks/https://api.render.com/deploy/srv-d6aau675r7bs738v5s2g?key=n7Nk8XL-W5Y \
+          -H 'Content-Type: application/json'
+    
+    # Backend Deploy Hook  
+    - name: Deploy Backend to Render
+      run: |
+        curl -X POST \
+          https://api.render.com/webhooks/https://api.render.com/deploy/srv-d6aev2vpm1nc73d9v5sg?key=9VvtKCW9V9w   \
+          -H 'Content-Type: application/json'
   ci-status:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
