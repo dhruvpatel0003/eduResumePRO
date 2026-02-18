@@ -1,0 +1,304 @@
+/* ========================
+   Professor Shared With - List & Detail
+   ======================== */
+
+/* ========================
+   Filter Panel (List Screen)
+   ======================== */
+.prof-shared-filters {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0;
+  gap: 16px;
+}
+
+.prof-shared-filter-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prof-shared-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prof-shared-filter-row label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.prof-shared-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.prof-shared-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.prof-shared-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.prof-shared-action-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.prof-shared-action-link:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.prof-shared-action-link:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.prof-shared-action-link:disabled:hover {
+  background-color: transparent;
+}
+
+/* ========================
+   Give Feedback Toolbar (List Screen)
+   ======================== */
+.prof-shared-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.prof-shared-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.prof-shared-toolbar-btn:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.prof-shared-toolbar-btn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.prof-shared-toolbar-btn:disabled:hover {
+  background-color: transparent;
+}
+
+.prof-shared-toolbar-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* ========================
+   Requests Table (List Screen)
+   ======================== */
+.prof-shared-table {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.prof-shared-table-header {
+  display: grid;
+  grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.prof-shared-table-header span {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.prof-shared-table-row {
+  display: grid;
+  grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s;
+  cursor: pointer;
+}
+
+.prof-shared-table-row:last-child {
+  border-bottom: none;
+}
+
+.prof-shared-table-row:hover {
+  background-color: #f9fafb;
+}
+
+.prof-shared-table-row.selected {
+  background-color: #eff6ff;
+}
+
+.prof-shared-table-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.prof-shared-cell {
+  font-size: 14px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+}
+
+.prof-shared-cell-name {
+  font-weight: 500;
+}
+
+/* Status badges */
+.prof-shared-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.prof-shared-status.not-started {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.prof-shared-status.pending {
+  background-color: #fffbeb;
+  color: #92400e;
+}
+
+.prof-shared-status.started {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.prof-shared-status.completed {
+  background-color: #f0fdf4;
+  color: #065f46;
+}
+
+/* ========================
+   Loading / Empty / Error (List Screen)
+   ======================== */
+.prof-shared-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.prof-shared-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: prof-shared-spin 0.6s linear infinite;
+}
+
+@keyframes prof-shared-spin {
+  to { transform: rotate(360deg); }
+}
+
+.prof-shared-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.prof-shared-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.prof-shared-error p {
+  margin: 0 0 12px 0;
+}
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 768px) {
+  .prof-shared-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .prof-shared-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .prof-shared-filter-row label {
+    min-width: 0;
+  }
+
+  .prof-shared-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .prof-shared-table-header,
+  .prof-shared-table-row {
+    grid-template-columns: 40px 1fr 1fr;
+  }
+
+  .prof-shared-table-header span:nth-child(n+4),
+  .prof-shared-table-row .prof-shared-cell:nth-child(n+4) {
+    display: none;
+  }
+}

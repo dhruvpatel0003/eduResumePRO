@@ -24,6 +24,11 @@ import Hunter from './pages/Hunter';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 
+// Professor-only Pages
+import ProfessorRequestDetail from './pages/ProfessorRequestDetail';
+import ProfessorSharedWithDetail from './pages/ProfessorSharedWithDetail';
+import RoleRoute from './components/RoleRoute';
+
 function App() {
   return (
     <AuthProvider>
@@ -56,6 +61,24 @@ function App() {
             <Route path="/hunter" element={<Hunter />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
+
+            {/* Professor-only Routes */}
+            <Route
+              path="/professor/request/:requestId"
+              element={
+                <RoleRoute allowedRoles={['professor']}>
+                  <ProfessorRequestDetail />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/shared-with/:requestId"
+              element={
+                <RoleRoute allowedRoles={['professor']}>
+                  <ProfessorSharedWithDetail />
+                </RoleRoute>
+              }
+            />
           </Route>
 
           {/* Catch all */}

@@ -1,0 +1,410 @@
+/* ========================
+   Professor Templates - Upload Management
+   ======================== */
+
+/* Filter Bar */
+.prof-templates-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0;
+}
+
+.prof-templates-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prof-templates-filter-left label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.prof-templates-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  min-width: 240px;
+}
+
+.prof-templates-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.prof-templates-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prof-templates-action-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.prof-templates-action-link:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.prof-templates-action-link:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.prof-templates-action-link:disabled:hover {
+  background-color: transparent;
+}
+
+/* Action Toolbar */
+.prof-templates-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.prof-templates-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.prof-templates-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.prof-templates-select-all input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+}
+
+.prof-templates-toolbar-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.prof-templates-toolbar-action:hover:not(:disabled) {
+  color: #1f2937;
+  background-color: #f3f4f6;
+}
+
+.prof-templates-toolbar-action.upload-action {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.prof-templates-toolbar-action.upload-action:hover {
+  background-color: #eff6ff;
+}
+
+.prof-templates-toolbar-action.delete-action:hover {
+  color: #ef4444;
+}
+
+.prof-templates-toolbar-action:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.prof-templates-toolbar-action:disabled:hover {
+  background-color: transparent;
+  color: #9ca3af;
+}
+
+.prof-templates-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ========================
+   Selectable Template Grid
+   ======================== */
+.prof-templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.prof-template-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  display: block;
+}
+
+.prof-template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.prof-template-card:focus-within {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.prof-template-card.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.prof-template-card-checkbox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.prof-template-card-thumbnail {
+  width: 100%;
+  height: 200px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prof-template-card-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e5e7eb;
+}
+
+.prof-template-card-name {
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+/* ========================
+   Upload Modal
+   ======================== */
+.upload-modal {
+  min-width: 400px;
+  max-width: 480px;
+}
+
+.upload-modal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.upload-modal-top .modal-header {
+  margin-bottom: 0;
+}
+
+.upload-modal-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-modal-actions-top button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.upload-modal-actions-top .modal-btn-confirm:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.upload-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-file-btn {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.upload-file-btn:hover {
+  background: #e5e7eb;
+}
+
+.upload-file-name {
+  font-size: 14px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.upload-file-name.placeholder {
+  color: #9ca3af;
+}
+
+.upload-error {
+  font-size: 13px;
+  color: #ef4444;
+  margin-top: 12px;
+}
+
+/* ========================
+   Empty / Loading
+   ======================== */
+.prof-templates-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 12px;
+}
+
+.prof-templates-empty-link {
+  color: #3b82f6;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.prof-templates-empty-link:hover {
+  text-decoration: underline;
+}
+
+.prof-templates-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.prof-templates-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: prof-templates-spin 0.6s linear infinite;
+}
+
+@keyframes prof-templates-spin {
+  to { transform: rotate(360deg); }
+}
+
+.prof-templates-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.prof-templates-error p {
+  margin: 0 0 12px 0;
+}
+
+/* Success Banner */
+.prof-templates-success-banner {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.prof-templates-success-banner p {
+  font-size: 14px;
+  font-weight: 500;
+  color: #065f46;
+  margin: 0;
+}
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 768px) {
+  .prof-templates-filter-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .prof-templates-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .prof-templates-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .prof-templates-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-modal {
+    min-width: 0;
+    max-width: 90vw;
+    margin: 0 16px;
+  }
+}
