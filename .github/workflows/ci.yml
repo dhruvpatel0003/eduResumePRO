@@ -109,8 +109,9 @@ jobs:
   build-backend-image:
     needs: [backend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -134,8 +135,9 @@ jobs:
   build-frontend-image:
     needs: [frontend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -159,8 +161,9 @@ jobs:
   trivy-scan:
     needs: [build-backend-image, build-frontend-image]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -210,7 +213,9 @@ jobs:
   deploy-render:
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dhruvpatel0003/eduresumepro'
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dhruvpatel0003/eduresumepro'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     
     steps:
     - uses: actions/checkout@v3
