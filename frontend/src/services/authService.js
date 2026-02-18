@@ -88,6 +88,24 @@ const authService = {
     } catch (error) {
       throw error.response?.data?.message || 'Password reset failed';
     }
+  },
+
+  getProfile: async () => {
+    try {
+      const response = await api.get('/auth/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to load profile';
+    }
+  },
+
+  updateProfile: async (field, value) => {
+    try {
+      const response = await api.patch('/auth/profile', { [field]: value });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to update profile';
+    }
   }
 };
 

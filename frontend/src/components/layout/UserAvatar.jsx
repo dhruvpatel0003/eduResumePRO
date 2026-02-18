@@ -24,8 +24,15 @@ const UserAvatar = () => {
         setMenuOpen(false);
       }
     };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
   }, []);
 
   return (
@@ -44,8 +51,14 @@ const UserAvatar = () => {
             <strong>{user?.name}</strong>
             <span>{user?.email}</span>
           </div>
+          <button
+            className="avatar-dropdown-item"
+            onClick={() => { setMenuOpen(false); navigate('/profile'); }}
+          >
+            My Profile
+          </button>
           <button className="avatar-dropdown-item" onClick={handleLogout}>
-            Logout
+            Log Out
           </button>
         </div>
       )}
