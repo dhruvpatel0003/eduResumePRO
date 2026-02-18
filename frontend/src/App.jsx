@@ -21,6 +21,7 @@ import Details from './pages/Details';
 import Report from './pages/Report';
 import Shared from './pages/Shared';
 import Hunter from './pages/Hunter';
+import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 
 function App() {
@@ -53,6 +54,7 @@ function App() {
             <Route path="/report" element={<Report />} />
             <Route path="/shared" element={<Shared />} />
             <Route path="/hunter" element={<Hunter />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
 
