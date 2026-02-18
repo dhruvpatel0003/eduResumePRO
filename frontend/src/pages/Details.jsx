@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
@@ -9,6 +9,7 @@ import SkillsTab from '../components/details/SkillsTab';
 import ExperienceTab from '../components/details/ExperienceTab';
 import ProjectsTab from '../components/details/ProjectsTab';
 import ActivityTab from '../components/details/ActivityTab';
+import CreateResumeTab from '../components/details/CreateResumeTab';
 import AddModal from '../components/details/AddModal';
 import DeleteModal from '../components/details/DeleteModal';
 import '../styles/details.css';
@@ -21,6 +22,7 @@ const TAB_ORDER = [
   'Professional Experience',
   'Projects',
   'Extra Curricular Activity',
+  'Create Resume',
 ];
 
 const REPEATABLE_TABS = ['Education', 'Professional Experience', 'Projects', 'Extra Curricular Activity'];
@@ -85,6 +87,30 @@ const Details = () => {
   const [activityEntries, setActivityEntries] = useState([
     createEntry('Extra Curricular Activity'),
   ]);
+
+  // Create Resume state
+  const [resumePreviewUrl, setResumePreviewUrl] = useState(null);
+  const [resumeGenerated, setResumeGenerated] = useState(false);
+  const [resumeDownloaded, setResumeDownloaded] = useState(false);
+  const [resumeLastGeneratedAt, setResumeLastGeneratedAt] = useState(null);
+  const [isGeneratingResume, setIsGeneratingResume] = useState(false);
+  const [generationError, setGenerationError] = useState('');
+  const [detailsLastUpdatedAt, setDetailsLastUpdatedAt] = useState(null);
+
+  // Navigation guard
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+
+  // Stale detection
+  const isResumeStale = resumeGenerated &&
+    detailsLastUpdatedAt != null &&
+    resumeLastGeneratedAt != null &&
+    detailsLastUpdatedAt > resumeLastGeneratedAt;
+
+  // Track detail changes for stale detection
+  const markDetailsUpdated = useCallback(() => {
+    setDetailsLastUpdatedAt(Date.now());
+  }, []);
 
   // Tab navigation
   const currentTabIndex = TAB_ORDER.indexOf(currentTab);
@@ -185,26 +211,99 @@ const Details = () => {
     }
     setSelections(prev => ({ ...prev, [currentTab]: [] }));
     setShowDeleteModal(false);
+    markDetailsUpdated();
   };
 
   // Save
   const handleSave = () => {
     // TODO: persist to backend
+    markDetailsUpdated();
     alert('Changes saved for ' + currentTab);
   };
 
-  // Update helpers
+  // Update helpers (with stale tracking)
   const updatePersonal = (field, value) => {
     setPersonal(prev => ({ ...prev, [field]: value }));
+    markDetailsUpdated();
   };
 
   const updateEntry = (setter) => (id, field, value) => {
     setter(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
+    markDetailsUpdated();
   };
 
   const updateSkills = (field, value) => {
     setSkills(prev => ({ ...prev, [field]: value }));
+    markDetailsUpdated();
   };
+
+  // --- Create Resume handlers ---
+
+  const hasRequiredData = () => {
+    const hasPersonal = personal.firstName.trim() || personal.lastName.trim();
+    const hasContent =
+      educationEntries.some(e => e.degree || e.program) ||
+      experienceEntries.some(e => e.company || e.role) ||
+      projectEntries.some(e => e.name) ||
+      activityEntries.some(e => e.name) ||
+      skills.languages || skills.technologies;
+    return hasPersonal && hasContent;
+  };
+
+  const handleCreateResume = async () => {
+    if (!hasRequiredData()) {
+      setGenerationError('Complete required sections first (Personal + at least one content section).');
+      return;
+    }
+
+    try {
+      setIsGeneratingResume(true);
+      setGenerationError('');
+
+      // TODO: replace with real API call — resumeService.generate(templateId)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Mock: set preview URL to null (placeholder will show)
+      setResumePreviewUrl(null);
+      setResumeGenerated(true);
+      setResumeDownloaded(false);
+      setResumeLastGeneratedAt(Date.now());
+    } catch (err) {
+      setGenerationError(err || 'Could not generate resume. Try again.');
+    } finally {
+      setIsGeneratingResume(false);
+    }
+  };
+
+  const handleDownloadResume = () => {
+    if (!resumeGenerated) return;
+    // TODO: real download logic
+    setResumeDownloaded(true);
+    alert('Resume downloaded.');
+  };
+
+  // --- Navigation guard ---
+
+  const handleNavigateAway = useCallback((path) => {
+    if (resumeGenerated && !resumeDownloaded) {
+      setPendingNavigation(path);
+      setShowLeaveModal(true);
+    } else {
+      navigate(path);
+    }
+  }, [resumeGenerated, resumeDownloaded, navigate]);
+
+  useEffect(() => {
+    if (!resumeGenerated || resumeDownloaded) return;
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [resumeGenerated, resumeDownloaded]);
 
   // Render active tab content
   const renderTab = () => {
@@ -269,18 +368,32 @@ const Details = () => {
             onChange={updateEntry(setActivityEntries)}
           />
         );
+      case 'Create Resume':
+        return (
+          <CreateResumeTab
+            resumePreviewUrl={resumePreviewUrl}
+            resumeGenerated={resumeGenerated}
+            resumeDownloaded={resumeDownloaded}
+            isGenerating={isGeneratingResume}
+            generationError={generationError}
+            isStale={isResumeStale}
+            onCreateResume={handleCreateResume}
+            onDownload={handleDownloadResume}
+          />
+        );
       default:
         return null;
     }
   };
 
   const isRepeatable = REPEATABLE_TABS.includes(currentTab);
+  const isCreateResumeTab = currentTab === 'Create Resume';
 
   return (
     <div>
       {/* Header Row */}
       <div className="details-header-row">
-        <button className="details-back-btn" onClick={() => navigate(-1)}>
+        <button className="details-back-btn" onClick={() => handleNavigateAway('/dashboard')}>
           <ChevronLeftIcon /> Back
         </button>
 
@@ -303,57 +416,102 @@ const Details = () => {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="details-toolbar">
-        <div className="details-toolbar-left">
-          <label className="toolbar-select-all">
-            <input
-              type="checkbox"
-              checked={(() => {
-                const entries = getEntriesForTab(currentTab);
-                const sel = getSelectedIds();
-                return entries.length > 0 && entries.every(e => sel.includes(e.id));
-              })()}
-              onChange={selectAll}
-            />
-            Select All
-          </label>
+      {/* Toolbar — changes based on tab */}
+      {isCreateResumeTab ? (
+        <div className="details-toolbar">
+          <div className="details-toolbar-left">
+            <button
+              className="toolbar-action save-action"
+              onClick={handleCreateResume}
+              disabled={isGeneratingResume}
+            >
+              {isGeneratingResume
+                ? 'Generating...'
+                : (resumeGenerated && isResumeStale)
+                  ? 'Regenerate Resume'
+                  : 'Create Resume'}
+            </button>
 
-          <button className="toolbar-action" onClick={() => setShowAddModal(true)}>
-            <span>+</span> Add
-          </button>
+            <button
+              className="toolbar-action"
+              onClick={handleDownloadResume}
+              disabled={!resumeGenerated || isResumeStale}
+            >
+              Download
+            </button>
+          </div>
 
-          <button
-            className="toolbar-action delete-action"
-            onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
-          >
-            <TrashIcon /> Delete
-          </button>
-
-          <button className="toolbar-action save-action" onClick={handleSave}>
-            Save
-          </button>
+          <div className="details-toolbar-right">
+            <button
+              className="toolbar-nav-btn"
+              onClick={goToPrevTab}
+              disabled={currentTabIndex <= 0}
+              aria-label="Previous tab"
+            >
+              <ChevronLeftIcon />
+            </button>
+            <button
+              className="toolbar-nav-btn"
+              onClick={goToNextTab}
+              disabled={currentTabIndex >= TAB_ORDER.length - 1}
+              aria-label="Next tab"
+            >
+              <ChevronRightIcon />
+            </button>
+          </div>
         </div>
+      ) : (
+        <div className="details-toolbar">
+          <div className="details-toolbar-left">
+            <label className="toolbar-select-all">
+              <input
+                type="checkbox"
+                checked={(() => {
+                  const entries = getEntriesForTab(currentTab);
+                  const sel = getSelectedIds();
+                  return entries.length > 0 && entries.every(e => sel.includes(e.id));
+                })()}
+                onChange={selectAll}
+              />
+              Select All
+            </label>
 
-        <div className="details-toolbar-right">
-          <button
-            className="toolbar-nav-btn"
-            onClick={goToPrevTab}
-            disabled={currentTabIndex <= 0}
-            aria-label="Previous tab"
-          >
-            <ChevronLeftIcon />
-          </button>
-          <button
-            className="toolbar-nav-btn"
-            onClick={goToNextTab}
-            disabled={currentTabIndex >= TAB_ORDER.length - 1}
-            aria-label="Next tab"
-          >
-            <ChevronRightIcon />
-          </button>
+            <button className="toolbar-action" onClick={() => setShowAddModal(true)}>
+              <span>+</span> Add
+            </button>
+
+            <button
+              className="toolbar-action delete-action"
+              onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
+            >
+              <TrashIcon /> Delete
+            </button>
+
+            <button className="toolbar-action save-action" onClick={handleSave}>
+              Save
+            </button>
+          </div>
+
+          <div className="details-toolbar-right">
+            <button
+              className="toolbar-nav-btn"
+              onClick={goToPrevTab}
+              disabled={currentTabIndex <= 0}
+              aria-label="Previous tab"
+            >
+              <ChevronLeftIcon />
+            </button>
+            <button
+              className="toolbar-nav-btn"
+              onClick={goToNextTab}
+              disabled={currentTabIndex >= TAB_ORDER.length - 1}
+              aria-label="Next tab"
+            >
+              <ChevronRightIcon />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tab Content */}
       {renderTab()}
@@ -373,6 +531,45 @@ const Details = () => {
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteModal(false)}
         />
+      )}
+
+      {/* Leave-without-download modal */}
+      {showLeaveModal && (
+        <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">Download Resume?</div>
+            <div className="modal-body">
+              <p>Do you want to download your resume before leaving?</p>
+            </div>
+            <div className="modal-actions">
+              <button
+                className="modal-btn-cancel"
+                onClick={() => setShowLeaveModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-btn-cancel"
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  if (pendingNavigation) navigate(pendingNavigation);
+                }}
+              >
+                Leave
+              </button>
+              <button
+                className="modal-btn-confirm"
+                onClick={() => {
+                  handleDownloadResume();
+                  setShowLeaveModal(false);
+                  if (pendingNavigation) navigate(pendingNavigation);
+                }}
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

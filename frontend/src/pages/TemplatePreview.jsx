@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeftIcon } from '../components/layout/icons';
+import DocumentViewer from '../components/DocumentViewer';
 import templateService from '../services/templateService';
 import '../styles/templates.css';
 
@@ -14,10 +15,6 @@ const MOCK_TEMPLATE_DETAILS = {
   t6: { _id: 't6', name: 'Mechanical Design Resume', previewUrl: null, numPages: 1 },
 };
 
-const MIN_ZOOM = 50;
-const MAX_ZOOM = 200;
-const ZOOM_STEP = 25;
-
 const TemplatePreview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -26,8 +23,6 @@ const TemplatePreview = () => {
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [zoom, setZoom] = useState(100);
-  const [pageNumber, setPageNumber] = useState(1);
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -58,21 +53,6 @@ const TemplatePreview = () => {
     navigate(major ? `/templates?major=${major}` : '/templates');
   };
 
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - ZOOM_STEP, MIN_ZOOM));
-  };
-
-  const handlePageInput = (e) => {
-    const val = parseInt(e.target.value, 10);
-    if (!isNaN(val) && val >= 1 && val <= (template?.numPages || 1)) {
-      setPageNumber(val);
-    }
-  };
-
   const handleUseIt = async () => {
     try {
       setIsApplying(true);
@@ -85,7 +65,6 @@ const TemplatePreview = () => {
 
       setShowSuccess(true);
 
-      // Navigate to resumes page after brief delay
       setTimeout(() => {
         navigate('/resumes');
       }, 1500);
@@ -95,8 +74,6 @@ const TemplatePreview = () => {
       setIsApplying(false);
     }
   };
-
-  const numPages = template?.numPages || 1;
 
   return (
     <div className="templates-container">
@@ -141,64 +118,12 @@ const TemplatePreview = () => {
           </button>
         </div>
       ) : (
-        <div className="templates-viewer">
-          {/* Viewer Toolbar */}
-          <div className="templates-viewer-toolbar">
-            <div className="templates-viewer-zoom">
-              <button
-                className="templates-viewer-btn"
-                onClick={handleZoomOut}
-                disabled={zoom <= MIN_ZOOM}
-                aria-label="Zoom out"
-              >
-                &minus;
-              </button>
-              <span className="templates-viewer-zoom-label">{zoom}%</span>
-              <button
-                className="templates-viewer-btn"
-                onClick={handleZoomIn}
-                disabled={zoom >= MAX_ZOOM}
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-            </div>
-            <div className="templates-viewer-pages">
-              <input
-                type="number"
-                className="templates-viewer-page-input"
-                value={pageNumber}
-                min={1}
-                max={numPages}
-                onChange={handlePageInput}
-                disabled={numPages <= 1}
-                aria-label="Page number"
-              />
-              <span className="templates-viewer-page-total">of {numPages}</span>
-            </div>
-          </div>
-
-          {/* Viewer Content */}
-          <div className="templates-viewer-content">
-            <div
-              className="templates-viewer-canvas"
-              style={{ transform: `scale(${zoom / 100})` }}
-            >
-              {template.previewUrl ? (
-                <img
-                  src={template.previewUrl}
-                  alt={`${template.name} preview`}
-                  className="templates-viewer-image"
-                />
-              ) : (
-                <div className="templates-viewer-placeholder">
-                  <span>{template.name}</span>
-                  <span className="templates-viewer-placeholder-sub">Template Preview</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <DocumentViewer
+          previewUrl={template.previewUrl}
+          title={template.name}
+          numPages={template.numPages || 1}
+          placeholderLabel="Template Preview"
+        />
       )}
     </div>
   );
