@@ -14,6 +14,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Resumes from './pages/Resumes';
 import Templates from './pages/Templates';
+import TemplatePreview from './pages/TemplatePreview';
 import Jobs from './pages/Jobs';
 import Applications from './pages/Applications';
 import Details from './pages/Details';
@@ -44,6 +45,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/resumes" element={<Resumes />} />
             <Route path="/templates" element={<Templates />} />
+            <Route path="/templates/:id" element={<TemplatePreview />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/applications" element={<Applications />} />
             <Route path="/details" element={<Details />} />
