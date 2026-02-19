@@ -65,6 +65,15 @@ const templateService = {
     } catch (error) {
       throw error.response?.data?.message || 'Failed to delete template';
     }
+  },
+
+  applyTemplate: async (id) => {
+    try {
+      const response = await api.post(`/templates/${id}/apply`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Could not apply template. Please try again.';
+    }
   }
 };
 

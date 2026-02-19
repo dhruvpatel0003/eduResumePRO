@@ -1,0 +1,271 @@
+/* ========================
+   Professor Dashboard - Requests List
+   ======================== */
+
+/* Filter Panel */
+.prof-dash-filters {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.prof-dash-filter-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prof-dash-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prof-dash-filter-row label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.prof-dash-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.prof-dash-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.prof-dash-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.prof-dash-action-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.prof-dash-action-link:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+.prof-dash-action-link:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.prof-dash-action-link:disabled:hover {
+  background-color: transparent;
+}
+
+/* Give Feedback Action Row */
+.prof-dash-action-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+/* ========================
+   Requests Table
+   ======================== */
+.prof-dash-table {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.prof-dash-table-header {
+  display: grid;
+  grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.prof-dash-table-header span {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.prof-dash-table-row {
+  display: grid;
+  grid-template-columns: 40px 2fr 1fr 1.5fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s;
+  cursor: pointer;
+}
+
+.prof-dash-table-row:last-child {
+  border-bottom: none;
+}
+
+.prof-dash-table-row:hover {
+  background-color: #f9fafb;
+}
+
+.prof-dash-table-row.selected {
+  background-color: #eff6ff;
+}
+
+.prof-dash-table-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.prof-dash-cell {
+  font-size: 14px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+}
+
+.prof-dash-cell-name {
+  font-weight: 500;
+}
+
+/* Status badges */
+.prof-dash-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.prof-dash-status.not-started {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.prof-dash-status.pending {
+  background-color: #fffbeb;
+  color: #92400e;
+}
+
+.prof-dash-status.started {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.prof-dash-status.completed {
+  background-color: #f0fdf4;
+  color: #065f46;
+}
+
+/* ========================
+   Pagination (reuses dashboard styles)
+   ======================== */
+
+/* ========================
+   Loading / Empty / Error
+   ======================== */
+.prof-dash-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.prof-dash-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: prof-dash-spin 0.6s linear infinite;
+}
+
+@keyframes prof-dash-spin {
+  to { transform: rotate(360deg); }
+}
+
+.prof-dash-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.prof-dash-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.prof-dash-error p {
+  margin: 0 0 12px 0;
+}
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 768px) {
+  .prof-dash-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .prof-dash-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .prof-dash-filter-row label {
+    min-width: 0;
+  }
+
+  .prof-dash-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .prof-dash-table-header,
+  .prof-dash-table-row {
+    grid-template-columns: 40px 1fr 1fr;
+  }
+
+  .prof-dash-table-header span:nth-child(n+4),
+  .prof-dash-table-row .prof-dash-cell:nth-child(n+4) {
+    display: none;
+  }
+}

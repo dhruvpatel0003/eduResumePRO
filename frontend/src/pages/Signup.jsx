@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
+import Logo from '../components/Logo';
 import '../styles/auth.css';
 
 const Signup = () => {
@@ -40,6 +41,7 @@ const Signup = () => {
 
   return (
     <div className="auth-container">
+      <Logo />
       <div className="auth-form">
         <h2>Create Account</h2>
         {error && <div className="error-message">{error}</div>}

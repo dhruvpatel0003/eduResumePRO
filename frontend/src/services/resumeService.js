@@ -74,6 +74,15 @@ const resumeService = {
     } catch (error) {
       throw error.response?.data?.message || 'Failed to publish resume';
     }
+  },
+
+  generate: async (templateId) => {
+    try {
+      const response = await api.post('/resumes/generate', { templateId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Could not generate resume. Try again.';
+    }
   }
 };
 

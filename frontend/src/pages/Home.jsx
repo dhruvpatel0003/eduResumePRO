@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 import '../styles/home.css';
 
 const Home = () => {
   return (
     <div className="home-container">
       <header className="home-header">
-        <h1>EduResume Pro</h1>
+        <Logo />
+        {/* <h1>EduResume Pro</h1> */}
         <p>Create professional resumes easily</p>
       </header>
 
