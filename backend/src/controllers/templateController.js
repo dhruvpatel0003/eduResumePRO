@@ -1,65 +1,51 @@
 const Template = require('../models/Template');
+const { uploadToGridFS } = require('../config/gridfs');
+const multer = require('multer'); // Simple memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 
-const templateController = {
-  // Get all templates
-  getAll: async (req, res) => {
-    try {
-      const templates = await Template.find({ isPublic: true });
-      res.status(200).json(templates);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+class TemplateController {
+  static uploadTemplate = [
+    upload.single('pdf'), // Store in memory
+    async (req, res) => {
+      
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: 'PDF file required' });
+        }
+
+        const { name, description } = req.body;
+        if (!name) return res.status(400).json({ error: 'Name required' });
+
+        // Upload buffer to GridFS
+        const gridFSId = await uploadToGridFS(req.file.buffer, `template-${Date.now()}.pdf`);
+
+        // Save to MongoDB
+        const template = await Template.create({
+          name,
+          description,
+          professorId: req.user?.id || null,
+          pdfGridFSId: gridFSId
+        });
+
+        res.status(201).json({
+          message: 'Template uploaded!',
+          template: {
+            id: template._id,
+            name: template.name,
+            pdfGridFSId: template.pdfGridFSId.toString()
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Upload failed' });
+      }
     }
-  },
+  ];
 
-  // Get template by ID
-  getById: async (req, res) => {
-    try {
-      const template = await Template.findById(req.params.id);
-      if (!template) return res.status(404).json({ message: 'Template not found' });
-      res.status(200).json(template);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Create template (admin only)
-  create: async (req, res) => {
-    try {
-      const template = new Template({
-        ...req.body,
-        createdBy: req.user.id
-      });
-
-      await template.save();
-      res.status(201).json(template);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Update template
-  update: async (req, res) => {
-    try {
-      const template = await Template.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-      );
-      res.status(200).json(template);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Delete template
-  delete: async (req, res) => {
-    try {
-      await Template.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: 'Template deleted' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
+  static async listTemplates(req, res) {
+    const templates = await Template.find().sort({ createdAt: -1 });
+    res.json(templates);
   }
-};
+}
 
-module.exports = templateController;
+module.exports = TemplateController;

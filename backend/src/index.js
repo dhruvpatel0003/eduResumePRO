@@ -6,9 +6,9 @@ const authRoutes = require('./routes/authRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const jobOpeningRoutes = require('./routes/jobOpeningRoutes');
-const applicationRoutes = require('./routes/applicationRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
-
+const mongoose = require('mongoose');
+const { initGridFS } = require('./config/gridfs');
 // Load environment variables
 dotenv.config();
 
@@ -23,7 +23,13 @@ app.use(cors());
 
 // Database connection
 if (process.env.NODE_ENV !== 'test') {
-  connectDB().catch(err => {
+  connectDB().then(async () => {
+    console.log('✅ MongoDB connected');
+    
+    // NEW: Initialize GridFS buckets AFTER DB connection
+    const db = mongoose.connection.db;
+    initGridFS(db);
+    console.log('✅ GridFS buckets ready (professorTemplates)');}).catch(err => {
     console.error('Failed to connect DB:', err);
     process.exit(1);
   });
@@ -63,7 +69,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/jobs', jobOpeningRoutes);
-app.use('/api/applications', applicationRoutes);
 app.use('/api/feedback', feedbackRoutes);
 
 // Error handling middleware
