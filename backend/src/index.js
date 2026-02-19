@@ -37,6 +37,27 @@ app.get('/health', (req, res) => {
   });
 });
 
+// In your backend server.js
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  
+  res.send(`
+# HELP eduresume_resumes_generated_total Total resumes generated
+# TYPE eduresume_resumes_generated_total counter
+eduresume_resumes_generated_total 42
+
+# HELP eduresume_ats_score_avg Average ATS score
+# TYPE eduresume_ats_score_avg gauge
+eduresume_ats_score_avg 82
+
+# HELP eduresume_pdf_generation_seconds PDF generation time
+# TYPE eduresume_pdf_generation_seconds histogram
+eduresume_pdf_generation_seconds_bucket{le="1"} 10
+eduresume_pdf_generation_seconds_bucket{le="2"} 35
+eduresume_pdf_generation_seconds_bucket{le="+Inf"} 42
+  `);
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/resumes', resumeRoutes);

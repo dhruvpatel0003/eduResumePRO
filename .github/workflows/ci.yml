@@ -105,8 +105,9 @@ jobs:
   build-backend-image:
     needs: [backend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -130,8 +131,9 @@ jobs:
   build-frontend-image:
     needs: [frontend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -155,8 +157,9 @@ jobs:
   trivy-scan:
     needs: [build-backend-image, build-frontend-image]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+
     steps:
       - uses: actions/checkout@v3
       
@@ -203,7 +206,29 @@ jobs:
         with:
           sarif_file: 'frontend-trivy-results.sarif'
           category: 'trivy-frontend'
+  deploy-render:
+    needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
+    runs-on: ubuntu-latest
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dhruvpatel0003/eduresumepro'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
 
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Frontend Deploy Hook
+    - name: Deploy Frontend to Render
+      run: |
+        curl -X POST \
+          ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }} \
+          -H 'Content-Type: application/json'
+    
+    # Backend Deploy Hook  
+    - name: Deploy Backend to Render
+      run: |
+        curl -X POST \
+          ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}   \
+          -H 'Content-Type: application/json'
   ci-status:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
