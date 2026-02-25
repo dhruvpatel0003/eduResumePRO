@@ -6,5 +6,6 @@ const authMiddleware = require("../middleware/auth");
 // Get all templates (public)
 router.post("/", authMiddleware, templateController.uploadTemplate);
 router.get("/", templateController.listTemplates);
+router.delete('/:id', authMiddleware, templateController.deleteTemplate);
 
 module.exports = router;

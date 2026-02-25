@@ -10,14 +10,31 @@ const initGridFS = (db) => {
 
 const uploadToGridFS = (buffer, filename) => {
   return new Promise((resolve, reject) => {
+    if (!templateBucket) {
+      return reject(new Error('GridFS bucket not initialized'));
+    }
     const uploadStream = templateBucket.openUploadStream(filename);
-    uploadStream.id = new mongoose.Types.ObjectId(); // Custom ID
+    uploadStream.id = new mongoose.Types.ObjectId();
     
     uploadStream.on('error', reject);
-    uploadStream.on('finish', () => resolve(uploadStream.id));
-    
+    uploadStream.on('finish', () => resolve(uploadStream.id)); // ✅ uploadStream.id is ObjectId
     uploadStream.end(buffer);
   });
 };
 
-module.exports = { initGridFS, uploadToGridFS };
+const deleteFromGridFS = async (gridFSIdString) => {
+  if (!templateBucket) {
+    throw new Error('GridFS bucket not initialized');
+  }
+  
+  const gridFSId = new mongoose.Types.ObjectId(gridFSIdString);
+  await templateBucket.delete(gridFSId);
+};
+
+const downloadFromGridFS = (gridFSIdString) => {
+  if (!templateBucket) throw new Error('GridFS not initialized');
+  return templateBucket.openDownloadStreamById(new mongoose.Types.ObjectId(gridFSIdString));
+};
+
+module.exports = { initGridFS, uploadToGridFS, deleteFromGridFS, downloadFromGridFS };
+
