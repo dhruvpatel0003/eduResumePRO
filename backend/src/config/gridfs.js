@@ -36,5 +36,25 @@ const downloadFromGridFS = (gridFSIdString) => {
   return templateBucket.openDownloadStreamById(new mongoose.Types.ObjectId(gridFSIdString));
 };
 
-module.exports = { initGridFS, uploadToGridFS, deleteFromGridFS, downloadFromGridFS };
+// Get full file as Buffer from GridFS using its id
+const getFileBufferFromGridFS = (gridFSIdString) => {
+  return new Promise((resolve, reject) => {
+    if (!templateBucket) {
+      return reject(new Error('GridFS bucket not initialized'));
+    }
+
+    const objectId = new mongoose.Types.ObjectId(gridFSIdString);
+    const downloadStream = templateBucket.openDownloadStream(objectId);
+
+    const chunks = [];
+    downloadStream.on('data', (chunk) => chunks.push(chunk));
+    downloadStream.on('error', (err) => reject(err));
+    downloadStream.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      resolve(buffer);
+    });
+  });
+};
+
+module.exports = { initGridFS, uploadToGridFS, deleteFromGridFS, downloadFromGridFS, getFileBufferFromGridFS };
 

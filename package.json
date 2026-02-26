@@ -17,6 +17,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5"
   }
 }
