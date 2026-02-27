@@ -7,6 +7,7 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const jobOpeningRoutes = require('./routes/jobOpeningRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const decriptionRoutes = require('./routes/descriptionRoutes');
 const mongoose = require('mongoose');
 const { initGridFS } = require('./config/gridfs');
 // Load environment variables
@@ -70,6 +71,7 @@ app.use('/api/resumes', resumeRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/jobs', jobOpeningRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/era', decriptionRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
