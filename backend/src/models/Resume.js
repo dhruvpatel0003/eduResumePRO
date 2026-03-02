@@ -82,8 +82,12 @@ const resumeSchema = new mongoose.Schema(
         required: true,
       },
     },
+    generatedPdfGridFSId: {
+      type: mongoose.Schema.Types.ObjectId,
+    },
+    generatedAt: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Resume", resumeSchema);
