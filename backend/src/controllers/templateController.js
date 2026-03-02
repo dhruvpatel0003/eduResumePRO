@@ -1,65 +1,128 @@
-const Template = require('../models/Template');
+const Template = require("../models/Template");
+const { uploadToGridFS } = require("../config/gridfs");
+const multer = require("multer"); // Simple memory storage
+const upload = multer({ storage: multer.memoryStorage() });
+const { deleteFromGridFS, downloadFromGridFS } = require("../config/gridfs");
 
-const templateController = {
-  // Get all templates
-  getAll: async (req, res) => {
-    try {
-      const templates = await Template.find({ isPublic: true });
-      res.status(200).json(templates);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
+class TemplateController {
+  static uploadTemplate = [
+    upload.single("pdf"), // Store in memory
+    async (req, res) => {
+      try {
+        // Only professors may upload templates
+        if (!req.user || req.user.role !== "professor") {
+          return res
+            .status(403)
+            .json({ error: "Only professors can upload templates" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ error: "PDF file required" });
+        }
 
-  // Get template by ID
-  getById: async (req, res) => {
-    try {
-      const template = await Template.findById(req.params.id);
-      if (!template) return res.status(404).json({ message: 'Template not found' });
-      res.status(200).json(template);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
+        const { name, description } = req.body;
+        if (!name) return res.status(400).json({ error: "Name required" });
 
-  // Create template (admin only)
-  create: async (req, res) => {
+        // Upload buffer to GridFS
+        const gridFSId = await uploadToGridFS(
+          req.file.buffer,
+          `template-${Date.now()}.pdf`,
+        );
+        // Save to MongoDB
+        const template = await Template.create({
+          name,
+          description,
+          professorId: req.user?.id || null,
+          pdfGridFSId: gridFSId.toString(), // Store as string for easier handling
+        });
+
+        res.status(201).json({
+          message: "Template uploaded!",
+          template: {
+            id: template._id,
+            name: template.name,
+            pdfGridFSId: template.pdfGridFSId.toString(),
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Upload failed" });
+      }
+    },
+  ];
+
+  static async listTemplates(req, res) {
+    const templates = await Template.find().sort({ createdAt: -1 });
+    res.json(templates);
+  }
+
+  static async deleteTemplate(req, res) {
     try {
-      const template = new Template({
-        ...req.body,
-        createdBy: req.user.id
+      // Only professors may delete templates
+      if (!req.user || req.user.role !== "professor") {
+        return res
+          .status(403)
+          .json({ error: "Only professors can delete templates" });
+      }
+      const { id } = req.params;
+
+      // 1. Find template
+      const template = await Template.findOne({
+        _id: id,
+        professorId: req.user.id, // Only own templates
       });
 
-      await template.save();
-      res.status(201).json(template);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
+      if (!template) {
+        return res
+          .status(404)
+          .json({ error: "Template not found or unauthorized" });
+      }
 
-  // Update template
-  update: async (req, res) => {
-    try {
-      const template = await Template.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-      );
-      res.status(200).json(template);
+      await deleteFromGridFS(template.pdfGridFSId);
+      await Template.findByIdAndDelete(id);
+      res.json({
+        message: "Template deleted successfully",
+        deletedTemplate: template.name,
+      });
     } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Delete template
-  delete: async (req, res) => {
-    try {
-      await Template.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: 'Template deleted' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+      console.error("Delete template error:", error);
+      res.status(500).json({ error: "Failed to delete template" });
     }
   }
-};
+  static async getTemplatePdf(req, res) {
+    try {
+      const { templateId } = req.params;
 
-module.exports = templateController;
+      const template = await Template.findById(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      const gridId = template.pdfGridFSId.toString();
+
+      // Open download stream from GridFS
+      const stream = downloadFromGridFS(gridId);
+
+      res.set({
+        "Content-Type": "application/pdf",
+        // inline → opens in browser, attachment → forces download
+        "Content-Disposition": `inline; filename="${template.name || "template"}.pdf"`,
+      });
+
+      stream.on("error", (err) => {
+        console.error("GridFS read error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to read PDF" });
+        }
+      });
+
+      // Pipe GridFS stream directly to HTTP response
+      stream.pipe(res);
+    } catch (err) {
+      console.error("Get template PDF error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to get template PDF" });
+      }
+    }
+  }
+}
+module.exports = TemplateController;
