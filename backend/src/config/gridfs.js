@@ -31,10 +31,14 @@ const deleteFromGridFS = async (gridFSIdString) => {
   await templateBucket.delete(gridFSId);
 };
 
+// config/gridfs.js
+
 const downloadFromGridFS = (gridFSIdString) => {
   if (!templateBucket) throw new Error('GridFS not initialized');
-  return templateBucket.openDownloadStreamById(new mongoose.Types.ObjectId(gridFSIdString));
+  const objectId = new mongoose.Types.ObjectId(gridFSIdString);
+  return templateBucket.openDownloadStream(objectId);
 };
+
 
 // Get full file as Buffer from GridFS using its id
 const getFileBufferFromGridFS = (gridFSIdString) => {
