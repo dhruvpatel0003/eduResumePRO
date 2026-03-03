@@ -1,8 +1,9 @@
 const Resume = require("../models/Resume");
 const Template = require("../models/Template");
 const { getFileBufferFromGridFS, uploadToGridFS } = require("../config/gridfs");
-const { generateResumeWithPerplexity  } = require('../utils/perplexityService');
-const { convertMarkdownToPDF } = require('../utils/pdfService');
+const { generateResumeWithPerplexity } = require("../utils/perplexityService");
+const { convertMarkdownToPDF } = require("../utils/pdfService");
+const { enhanceProjectDescriptions } = require("../utils/projectEnhancer");
 // const pdfParse = require("pdf-parse");
 // const { deriveSectionsFromPdfText } = require('../utils/sections');
 
@@ -14,6 +15,28 @@ const DEFAULT_SECTIONS = [
   "projects",
   "certifications",
 ];
+function applyFieldPathUpdate(rootObj, fieldPath, newValue) {
+  if (!rootObj || !fieldPath) return;
+
+  const segments = fieldPath
+    .replace(/\]/g, "")
+    .split(".")
+    .map((s) => s.replace("[", "."))
+    .join(".")
+    .split(".");
+
+  let obj = rootObj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const key = segments[i];
+    if (obj == null || !(key in obj)) return; // invalid path, ignore
+    obj = obj[key];
+  }
+  const lastKey = segments[segments.length - 1];
+  if (obj != null) {
+    obj[lastKey] = newValue;
+  }
+
+}
 
 const resumeController = {
   createFromTemplate: async (req, res) => {
@@ -169,7 +192,7 @@ const resumeController = {
   generateResumePDF: async (req, res) => {
     try {
       const { resumeId } = req.params;
-
+      const { enhanceProjects } = req.body;
       const resume = await Resume.findById(resumeId).populate("templateId");
       if (!resume) {
         return res.status(404).json({ message: "Resume not found" });
@@ -183,6 +206,14 @@ const resumeController = {
         return res.status(400).json({
           message: "Please fill personal information first",
         });
+      }
+
+      if (enhanceProjects && resume.templateInfo.projects.length > 0) {
+        console.log("✨ Enhancing GitHub project descriptions...");
+        resume.templateInfo.projects = await enhanceProjectDescriptions(
+          resume.templateInfo.projects,
+        );
+        await resume.save();
       }
 
       // **1. Get professor template as visual reference**
@@ -301,6 +332,231 @@ const resumeController = {
       console.error(err);
       res.status(500).json({ message: err.message });
     }
+  },
+  shareResumeWithProfessor: async (req, res) => {
+    const { resumeId } = req.params;
+    const { facultyId } = req.body;
+
+    if (req.user.role.toLowerCase() !== "student") {
+      return res
+        .status(403)
+        .json({ message: "Only students can share resumes with professors" });
+    }
+    const resume = await Resume.findById(resumeId);
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+    if (resume.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const already = resume.reviewers.find(
+      (r) => r.facultyId.toString() === facultyId,
+    );
+    if (!already) {
+      resume.reviewers.push({
+        facultyId,  
+        status: "pending",
+        sharedAt: new Date(),
+      });
+      await resume.save();
+    }
+
+    res.json({ message: "Resume shared with faculty", resumeId: resume._id });
+  },
+  listSharedResumesForFaculty: async (req, res) => {
+    const facultyId = req.user.id;
+    if (req.user.role.toLowerCase() !== "faculty") {
+      return res
+        .status(403)
+        .json({ message: "Only faculty can view shared resumes" });
+    }
+    const resumes = await Resume.find({ "reviewers.facultyId": facultyId })
+      .populate("userId", "name email")
+      .select("templateInfo.title reviewers generatedPdfGridFSId");
+
+    res.json({
+      resumes: resumes.map((r) => {
+        const reviewer = r.reviewers.find(
+          (rv) => rv.facultyId.toString() === facultyId,
+        );
+        return {
+          resumeId: r._id,
+          student: r.userId,
+          title: r.templateInfo.title,
+          status: reviewer?.status,
+          sharedAt: reviewer?.sharedAt,
+        };
+      }),
+    });
+  },
+  addFacultyFeedback: async (req, res) => {
+    const { resumeId } = req.params;
+    const { comments } = req.body;
+
+    if (req.user.role.toLowerCase() !== "faculty") {
+      return res
+        .status(403)
+        .json({ message: "Only faculty can add feedback to resumes" });
+    }
+
+    if (!Array.isArray(comments) || comments.length === 0) {
+      return res.status(400).json({ message: "comments array required" });
+    }
+
+    const resume = await Resume.findById(resumeId);
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+    // Check faculty is an assigned reviewer
+    const reviewer = resume.reviewers.find(
+      (r) => r.facultyId.toString() === req.user.id,
+    );
+    if (!reviewer) {
+      return res
+        .status(403)
+        .json({ message: "Not a reviewer for this resume" });
+    }
+
+    reviewer.status = "viewed";
+
+    resume.feedbackThreads.push({
+      facultyId: req.user.id,
+      comments: comments.map((c) => ({
+        ...c,
+        status: "pending",
+        createdAt: new Date(),
+      })),
+    });
+
+    await resume.save();
+
+    res.json({ message: "Feedback submitted", resumeId: resume._id });
+  },
+  getFeedbackFromFaculty: async (req, res) => {
+    const { resumeId } = req.params;
+
+    const resume = await Resume.findById(resumeId).populate(
+      "feedbackThreads.facultyId",
+      "name email",
+    );
+
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+    if (resume.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    res.json({
+      resumeId: resume._id,
+      feedbackThreads: resume.feedbackThreads,
+    });
+  },
+  // controllers/resumeController.js - UPDATED acceptAllFeedback WITH AUTO-REGENERATION
+  acceptAllFeedback: async (req, res) => {
+    const { resumeId } = req.params;
+    const { autoRegenerate } = req.body; // NEW: Optional flag
+
+    const resume = await Resume.findById(resumeId);
+    if (!resume) {
+      return res.status(404).json({ message: "Resume not found" });
+    }
+    if (resume.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    let appliedCount = 0;
+    let allReviewersCompleted = true;
+
+    // 1️⃣ Apply ALL feedback suggestions
+    for (const thread of resume.feedbackThreads) {
+      let threadHasPending = false;
+
+      for (const comment of thread.comments) {
+        if (comment.status === "pending" && comment.suggestedValue) {
+          applyFieldPathUpdate(
+            resume.templateInfo,
+            comment.fieldPath,
+            comment.suggestedValue,
+          );
+          comment.status = "accepted";
+          appliedCount++;
+        } else if (comment.status === "pending") {
+          threadHasPending = true;
+        }
+      }
+
+      if (threadHasPending) {
+        allReviewersCompleted = false;
+      }
+    }
+
+    // 2️⃣ Mark reviewers as completed
+    if (allReviewersCompleted) {
+      resume.reviewers.forEach((reviewer) => {
+        if (reviewer.status !== "completed") {
+          reviewer.status = "completed";
+          reviewer.completedAt = new Date();
+        }
+      });
+    }
+
+    // 3️⃣ Update timestamps
+    resume.templateInfo.updatedAt = new Date();
+
+    // 4️⃣ AUTO-REGENERATE PDF (if requested)
+    let newPdfId = null;
+    if (autoRegenerate) {
+      console.log("🔄 Auto-regenerating PDF after feedback...");
+
+      // Clear old PDF reference first
+      resume.generatedPdfGridFSId = undefined;
+      resume.generatedAt = undefined;
+
+      // Generate NEW PDF with updated content
+      const {
+        generateResumeWithPerplexity,
+      } = require("../utils/perplexityService");
+      const { convertMarkdownToPDF } = require("../utils/pdfService");
+      const { uploadToGridFS } = require("../config/gridfs");
+
+      let templateInstructions = "";
+      if (resume.templateId) {
+        templateInstructions = `
+**UPDATED CONTENT FROM FACULTY FEEDBACK** - Regenerating with latest accepted changes.
+- Template: ${resume.templateId.name}
+- Follow same structure and style.
+      `;
+      }
+
+      const markdownResume = await generateResumeWithPerplexity(
+        resume,
+        templateInstructions,
+      );
+      const pdfBuffer = await convertMarkdownToPDF(markdownResume);
+
+      const filename = `resume_${resume.userId}_${resume._id}_feedback-accepted_${Date.now()}.pdf`;
+      const gridFSId = await uploadToGridFS(pdfBuffer, filename);
+
+      // Update with NEW PDF
+      resume.generatedPdfGridFSId = gridFSId;
+      resume.generatedAt = new Date();
+      newPdfId = gridFSId.toString();
+    } else {
+      // Just mark PDF as stale (manual regeneration needed)
+      resume.generatedPdfGridFSId = undefined;
+      resume.generatedAt = undefined;
+    }
+
+    await resume.save();
+
+    res.json({
+      success: true,
+      message: `✅ Applied ${appliedCount} feedback suggestions`,
+      resumeId: resume._id,
+      feedbackApplied: appliedCount,
+      reviewersCompleted: allReviewersCompleted,
+      regeneratedPdf: newPdfId ? true : false,
+      newPdfId: newPdfId || null,
+      downloadUrl: newPdfId ? `/api/resumes/${resumeId}/pdf` : null,
+      needsManualRegeneration: !autoRegenerate,
+    });
   },
 };
 

@@ -1,115 +1,113 @@
-// services/perplexityService.js
 const axios = require('axios');
-const FormData = require('form-data');
+
+const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
 async function generateResumeWithPerplexity(resumeData, templateInstructions, templatePdfBuffer) {
   const prompt = buildResumePrompt(resumeData, templateInstructions);
 
-  // **NEW: Multi-modal request with PDF template as visual reference**
-  const form = new FormData();
-  form.append('model', 'sonar-pro'); // Supports vision
-  form.append('messages', JSON.stringify([{
-    role: 'system',
-    content: `
-You are a professional resume generator that matches professor templates EXACTLY.
-
-Your job:
-1. Analyze the provided professor template PDF visually
-2. Extract: section order, fonts, spacing, layout, bullet styles
-3. Fill student data into EXACT same structure
-4. Generate identical-looking resume in Markdown + LaTeX tables
-    `,
-  }, {
-    role: 'user',
-    content: [
-      { type: 'text', text: prompt },
-      ...(templatePdfBuffer ? [{
-        type: 'image_url',
-        image_url: {
-          url: `data:application/pdf;base64,${templatePdfBuffer.toString('base64')}`
-        }
-      }] : [])
-    ]
-  }]));
-
-  form.append('temperature', '0.1'); // Very consistent
-  form.append('max_tokens', '6000');
-
   try {
+    // **Perplexity DOES NOT support vision/PDF uploads**
+    // Use text-only with template instructions
     const response = await axios.post(
-      'https://api.perplexity.ai/chat/completions',
-      form,
+      PERPLEXITY_API_URL,
+      {
+        model: 'sonar',  // or 'sonar-pro'
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert resume writer. Generate professional, ATS-friendly resumes with strong action verbs, quantifiable achievements, and proper formatting.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 4000,
+      },
       {
         headers: {
-          ...form.getHeaders(),
           'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+          'Content-Type': 'application/json',
         },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
       }
     );
 
     return response.data.choices[0].message.content;
   } catch (error) {
-    console.error('Perplexity vision API error:', error.response?.data);
-    
-    // **FALLBACK: Text-only if vision fails**
-    console.log('Falling back to text-only generation...');
-    return await generateResumeTextOnly(resumeData, templateInstructions);
+    console.error('Perplexity API error:', error.response?.data || error.message);
+    throw new Error('Failed to generate resume with Perplexity');
   }
 }
 
-async function generateResumeTextOnly(resumeData, templateInstructions) {
-  // Same as original but without image
-  const prompt = buildResumePrompt(resumeData, templateInstructions);
-  
-  const response = await axios.post(
-    'https://api.perplexity.ai/chat/completions',
-    {
-      model: 'sonar-pro',
-      messages: [
-        {
-          role: 'system',
-          content: 'Generate professional resume matching template instructions.',
-        },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.1,
-      max_tokens: 4000,
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  return response.data.choices[0].message.content;
-}
-
 function buildResumePrompt(resumeData, templateInstructions) {
-  const { personalInfo, education, experience, projects, skills } = resumeData.templateInfo;
+  const { personalInfo, education, experience, projects, skills, certifications } = resumeData.templateInfo;
 
   return `
-**STUDENT RESUME DATA:**
+Generate a professional resume in **Markdown format with tables** based on the following student data:
 
-Personal: ${JSON.stringify(personalInfo, null, 2)}
-Education: ${JSON.stringify(education, null, 2)}
-Experience: ${JSON.stringify(experience, null, 2)}
-Projects: ${JSON.stringify(projects, null, 2)}
-Skills: ${skills?.join(', ') || ''}
+## PERSONAL INFORMATION
+- Name: ${personalInfo.fullName || personalInfo.name}
+- Email: ${personalInfo.email}
+- Phone: ${personalInfo.phone}
+- Location: ${personalInfo.location}
+- LinkedIn: ${personalInfo.linkedin || personalInfo.links?.find(l => l.includes('linkedin')) || 'N/A'}
+- GitHub: ${personalInfo.github || personalInfo.links?.find(l => l.includes('github')) || 'N/A'}
+- Summary: ${personalInfo.summary || 'Motivated software engineer'}
+
+## EDUCATION
+${education.map(edu => `
+- **${edu.degree || edu.fieldOfStudy}** at ${edu.institution || edu.school}
+  - Graduation: ${edu.graduationDate || edu.endDate}
+  - GPA: ${edu.gpa || 'N/A'}
+  - Relevant Coursework: ${edu.coursework || 'N/A'}
+`).join('\n')}
+
+## EXPERIENCE
+${experience.map(exp => `
+- **${exp.title || exp.position}** at ${exp.company}
+  - Duration: ${exp.startDate} - ${exp.endDate || 'Present'}
+  - ${exp.description}
+  - Technologies: ${exp.technologies?.join(', ') || 'N/A'}
+`).join('\n')}
+
+## PROJECTS
+${projects.map(proj => `
+- **${proj.name}**
+  - Description: ${proj.description}
+  - Technologies: ${proj.technologies?.join(', ') || proj.languages || 'N/A'}
+  - Link: ${proj.link || proj.githubUrl || 'N/A'}
+  - Stars: ${proj.stars || 'N/A'}
+  ${proj.bullets ? `- Achievements:\n${proj.bullets.map(b => `    * ${b}`).join('\n')}` : ''}
+`).join('\n')}
+
+## SKILLS
+${skills?.join(', ') || 'N/A'}
+
+## CERTIFICATIONS
+${certifications?.map(cert => `- ${cert.name || cert.title} (${cert.issuer || cert.organization})`).join('\n') || 'N/A'}
+
+---
 
 ${templateInstructions}
 
-**INSTRUCTIONS:**
-1. Match professor template EXACTLY (analyze uploaded PDF)
-2. Same section order, fonts, spacing, bullet styles
-3. Use LaTeX tables for Education/Experience/Projects
-4. Professional, ATS-friendly, single-column
-5. Output in clean Markdown with LaTeX formatting
+**FORMATTING REQUIREMENTS:**
+1. Use Markdown tables for Education and Experience sections:
+   \`\`\`
+   | School | Degree | Graduation |
+   |--------|--------|------------|
+   | ... | ... | ... |
+   \`\`\`
 
-Generate COMPLETE resume now.
+2. **Projects** as bullet list with bold names
+3. **Skills** grouped by category (Languages, Frameworks, Tools, Cloud)
+4. Action verbs: Developed, Built, Implemented, Optimized, Designed
+5. Quantify achievements: "Reduced load time 40%", "Served 10K users"
+6. ATS-friendly: No special characters, simple formatting
+7. Professional tone, no casual language
+8. Single-column layout
+
+**OUTPUT COMPLETE RESUME IN MARKDOWN FORMAT NOW.**
 `;
 }
 

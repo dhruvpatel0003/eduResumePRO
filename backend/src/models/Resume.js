@@ -86,6 +86,39 @@ const resumeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
     },
     generatedAt: Date,
+    reviewers: [
+      {
+        facultyId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        status: {
+          type: String,
+          enum: ["pending", "viewed", "completed"],
+          default: "pending",
+        },
+        sharedAt: Date,
+        completedAt: Date,
+      },
+    ],
+    feedbackThreads: [
+      { 
+        facultyId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        createdAt: { type: Date, default: Date.now },
+        comments: [
+          {
+            fieldPath: String, // e.g. "experience[0].bullets[1]"
+            type: { type: String, enum: ["suggestion", "correction"] },
+            originalValue: String,
+            suggestedValue: String,
+            note: String,
+            status: {
+              type: String,
+              enum: ["pending", "accepted", "rejected"],
+              default: "pending",
+            },
+            createdAt: { type: Date, default: Date.now },
+          },
+        ],
+      },
+    ],
   },
   { timestamps: true },
 );
