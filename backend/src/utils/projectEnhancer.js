@@ -10,8 +10,6 @@ async function enhanceProjectDescriptions(projects) {
     }
 
     try {
-      console.log(`✨ Enhancing project: ${project.name}`);
-      
       const enhanced = await generateProfessionalDescription(project);
       enhancedProjects.push({
         ...project,
