@@ -165,10 +165,21 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const listProfessors = async (req, res) => {
+  try {
+    const professors = await User.find({ role: 'professor' }).select('_id name email');
+    res.status(200).json({ professors });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch professors' });
+  }
+};
+
 module.exports = {
   signup,
   login,
   forgotPassword,
   verifyResetToken,
-  resetPassword
+  resetPassword,
+  listProfessors
 };

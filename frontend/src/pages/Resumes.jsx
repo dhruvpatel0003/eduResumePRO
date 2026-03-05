@@ -15,7 +15,10 @@ const Resumes = () => {
   const [error, setError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [successBanner] = useState('');
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [successBanner, setSuccessBanner] = useState('');
 
   useEffect(() => {
     fetchResumes();
@@ -42,6 +45,35 @@ const Resumes = () => {
   const handleDelete = async () => {
     // No backend delete route — close modal
     setShowDeleteModal(false);
+  };
+
+  const openRenameModal = () => {
+    if (!selectedResumeId) return;
+    const current = resumes.find(r => r._id === selectedResumeId);
+    setRenameValue(current?.title || '');
+    setShowRenameModal(true);
+  };
+
+  const handleRename = async () => {
+    if (!selectedResumeId || !renameValue.trim()) return;
+    setRenaming(true);
+    try {
+      // Fetch full details first so we send back the complete templateInfo
+      const details = await resumeService.getDetails(selectedResumeId);
+      const fullTemplateInfo = { ...details.templateInfo, title: renameValue.trim() };
+      await resumeService.updateDetails(selectedResumeId, fullTemplateInfo);
+      setResumes(prev => prev.map(r =>
+        r._id === selectedResumeId ? { ...r, title: renameValue.trim() } : r
+      ));
+      setShowRenameModal(false);
+      setSuccessBanner('Resume renamed successfully.');
+      setTimeout(() => setSuccessBanner(''), 4000);
+    } catch (err) {
+      setError(err || 'Failed to rename resume');
+      setShowRenameModal(false);
+    } finally {
+      setRenaming(false);
+    }
   };
 
   const handleShareSuccess = () => {
@@ -71,7 +103,7 @@ const Resumes = () => {
             disabled={!selectedResumeId || loading}
             onClick={() => setShowShareModal(true)}
           >
-            Shared with Professor
+            Share with Professor
           </button>
           <button
             className="resumes-action-link"
@@ -82,6 +114,26 @@ const Resumes = () => {
           </button>
         </div>
         <div className="resumes-toolbar-right">
+          <button
+            className="resumes-action-link"
+            onClick={() => navigate('/templates')}
+          >
+            + Create New
+          </button>
+          <button
+            className="resumes-action-link"
+            disabled={!selectedResumeId || loading}
+            onClick={() => navigate(`/details/${selectedResumeId}`)}
+          >
+            Edit
+          </button>
+          <button
+            className="resumes-action-link"
+            disabled={!selectedResumeId || loading}
+            onClick={openRenameModal}
+          >
+            Rename
+          </button>
           <button
             className="resumes-action-link resumes-action-link--danger"
             disabled={!selectedResumeId || loading}
@@ -160,6 +212,45 @@ const Resumes = () => {
           onShare={handleShareSuccess}
           onCancel={() => setShowShareModal(false)}
         />
+      )}
+
+      {/* Rename Modal */}
+      {showRenameModal && (
+        <div className="modal-overlay" onClick={() => setShowRenameModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">Rename Resume</div>
+            <div className="modal-body">
+              <label htmlFor="rename-input" style={{ display: 'block', marginBottom: 8 }}>
+                New name
+              </label>
+              <input
+                id="rename-input"
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); }}
+                autoFocus
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="modal-btn-cancel"
+                onClick={() => setShowRenameModal(false)}
+                disabled={renaming}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-btn-confirm"
+                onClick={handleRename}
+                disabled={!renameValue.trim() || renaming}
+              >
+                {renaming ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
