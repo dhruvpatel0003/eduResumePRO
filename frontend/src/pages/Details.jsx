@@ -168,16 +168,29 @@ const Details = () => {
           })));
         }
 
-        // Populate skills
+        // Populate skills — stored as ["Languages: JS, Python", "Tools: Git"]
         if (info.skills?.length > 0) {
           const skillMap = { languages: '', technologies: '', databases: '', tools: '' };
           info.skills.forEach(s => {
-            const cat = s.category?.toLowerCase() || '';
-            if (cat.includes('language')) skillMap.languages = s.skills?.join(', ') || s.name || '';
-            else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = s.skills?.join(', ') || s.name || '';
-            else if (cat.includes('database')) skillMap.databases = s.skills?.join(', ') || s.name || '';
-            else if (cat.includes('tool')) skillMap.tools = s.skills?.join(', ') || s.name || '';
-            else if (!skillMap.technologies) skillMap.technologies = s.skills?.join(', ') || s.name || '';
+            if (typeof s === 'string') {
+              const colonIdx = s.indexOf(':');
+              if (colonIdx > -1) {
+                const cat = s.substring(0, colonIdx).trim().toLowerCase();
+                const values = s.substring(colonIdx + 1).trim();
+                if (cat.includes('language')) skillMap.languages = values;
+                else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = values;
+                else if (cat.includes('database')) skillMap.databases = values;
+                else if (cat.includes('tool')) skillMap.tools = values;
+                else if (!skillMap.technologies) skillMap.technologies = values;
+              }
+            } else if (typeof s === 'object') {
+              const cat = s.category?.toLowerCase() || '';
+              if (cat.includes('language')) skillMap.languages = s.skills?.join(', ') || '';
+              else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = s.skills?.join(', ') || '';
+              else if (cat.includes('database')) skillMap.databases = s.skills?.join(', ') || '';
+              else if (cat.includes('tool')) skillMap.tools = s.skills?.join(', ') || '';
+              else if (!skillMap.technologies) skillMap.technologies = s.skills?.join(', ') || '';
+            }
           });
           setSkills(skillMap);
         }
@@ -394,12 +407,12 @@ const Details = () => {
     }
 
     if (activeSections.includes('Skills')) {
-      info.skills = [
-        { category: 'Languages', skills: skills.languages.split(',').map(s => s.trim()).filter(Boolean) },
-        { category: 'Technologies', skills: skills.technologies.split(',').map(s => s.trim()).filter(Boolean) },
-        { category: 'Databases', skills: skills.databases.split(',').map(s => s.trim()).filter(Boolean) },
-        { category: 'Tools', skills: skills.tools.split(',').map(s => s.trim()).filter(Boolean) },
-      ].filter(s => s.skills.length > 0);
+      const skillStrings = [];
+      if (skills.languages.trim()) skillStrings.push(`Languages: ${skills.languages.trim()}`);
+      if (skills.technologies.trim()) skillStrings.push(`Technologies: ${skills.technologies.trim()}`);
+      if (skills.databases.trim()) skillStrings.push(`Databases: ${skills.databases.trim()}`);
+      if (skills.tools.trim()) skillStrings.push(`Tools: ${skills.tools.trim()}`);
+      info.skills = skillStrings;
     }
 
     if (activeSections.includes('Professional Experience')) {
@@ -811,26 +824,34 @@ const Details = () => {
               </label>
             )}
 
-            <button
-              className="toolbar-action"
-              onClick={() => {
-                const tabs = getAddModalTabs();
-                if (tabs.length > 0) {
-                  setShowAddModal(true);
-                }
-              }}
-              disabled={isTabOverview ? removedSections.length === 0 : false}
-            >
-              <span>+</span> Add
-            </button>
+            {(isTabOverview || isRepeatableTab) && (
+              <button
+                className="toolbar-action"
+                onClick={() => {
+                  if (isRepeatableTab && !isTabOverview) {
+                    handleAdd(currentTab);
+                  } else {
+                    const tabs = getAddModalTabs();
+                    if (tabs.length > 0) {
+                      setShowAddModal(true);
+                    }
+                  }
+                }}
+                disabled={isTabOverview ? removedSections.length === 0 : false}
+              >
+                <span>+</span> Add
+              </button>
+            )}
 
-            <button
-              className="toolbar-action delete-action"
-              onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
-              disabled={getSelectedIds().length === 0}
-            >
-              <TrashIcon /> Remove
-            </button>
+            {(isTabOverview || isRepeatableTab) && (
+              <button
+                className="toolbar-action delete-action"
+                onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
+                disabled={getSelectedIds().length === 0}
+              >
+                <TrashIcon /> Remove
+              </button>
+            )}
 
             <button
               className="toolbar-action save-action"
