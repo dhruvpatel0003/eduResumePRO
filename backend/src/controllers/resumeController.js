@@ -35,7 +35,6 @@ function applyFieldPathUpdate(rootObj, fieldPath, newValue) {
   if (obj != null) {
     obj[lastKey] = newValue;
   }
-
 }
 
 const resumeController = {
@@ -347,7 +346,7 @@ const resumeController = {
     );
     if (!already) {
       resume.reviewers.push({
-        facultyId,  
+        facultyId,
         status: "pending",
         sharedAt: new Date(),
       });
@@ -497,7 +496,6 @@ const resumeController = {
     // 4️⃣ AUTO-REGENERATE PDF (if requested)
     let newPdfId = null;
     if (autoRegenerate) {
-
       // Clear old PDF reference first
       resume.generatedPdfGridFSId = undefined;
       resume.generatedAt = undefined;
@@ -550,6 +548,72 @@ const resumeController = {
       downloadUrl: newPdfId ? `/api/resumes/${resumeId}/pdf` : null,
       needsManualRegeneration: !autoRegenerate,
     });
+  },
+  // controllers/hunterController.js - ADD THIS METHOD
+  acceptAIFeedback: async (req, res) => {
+    try {
+      const { resumeId } = req.params;
+      const { comments, autoRegenerate = true } = req.body; // ← Accepts AI comments directly!
+
+      const resume = await Resume.findById(resumeId);
+      if (!resume) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Resume not found" });
+      }
+      if (resume.userId.toString() !== req.user.id) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      let appliedCount = 0;
+
+      // Apply ALL AI feedback directly to templateInfo
+      for (const comment of comments) {
+        applyFieldPathUpdate(
+          resume.templateInfo,
+          comment.fieldPath,
+          comment.suggestedValue,
+        );
+        appliedCount++;
+      }
+
+      // Auto-regenerate PDF
+      if (autoRegenerate) {
+        resume.generatedPdfGridFSId = undefined;
+        resume.generatedAt = undefined;
+
+        const {
+          generateResumeWithPerplexity,
+        } = require("../utils/perplexityService");
+        const { convertMarkdownToPDF } = require("../utils/pdfService");
+        const { uploadToGridFS } = require("../config/gridfs");
+
+        const markdownResume = await generateResumeWithPerplexity(resume);
+        const pdfBuffer = await convertMarkdownToPDF(markdownResume);
+        const filename = `resume_${resume._id}_ai-updated_${Date.now()}.pdf`;
+        const gridFSId = await uploadToGridFS(pdfBuffer, filename);
+
+        resume.generatedPdfGridFSId = gridFSId;
+        resume.generatedAt = new Date();
+      }
+
+      await resume.save();
+
+      res.json({
+        success: true,
+        message: `✅ Applied ${appliedCount} AI suggestions`,
+        feedbackApplied: appliedCount,
+        regeneratedPdf: autoRegenerate,
+        newPdfUrl: autoRegenerate ? `/api/resumes/${resumeId}/pdf` : null,
+      });
+    } catch (error) {
+      console.error("AI feedback apply error:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to apply feedback" });
+    }
   },
 };
 
