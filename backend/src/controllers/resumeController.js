@@ -209,7 +209,6 @@ const resumeController = {
       }
 
       if (enhanceProjects && resume.templateInfo.projects.length > 0) {
-        console.log("✨ Enhancing GitHub project descriptions...");
         resume.templateInfo.projects = await enhanceProjectDescriptions(
           resume.templateInfo.projects,
         );
@@ -221,7 +220,6 @@ const resumeController = {
       let templatePdfBuffer = null;
 
       if (resume.templateId && resume.templateId.pdfGridFSId) {
-        console.log("📄 Loading professor template for AI analysis...");
         templatePdfBuffer = await getFileBufferFromGridFS(
           resume.templateId.pdfGridFSId.toString(),
         );
@@ -234,19 +232,15 @@ const resumeController = {
       }
 
       // **2. Generate with Perplexity AI**
-      console.log("🤖 Calling Perplexity AI with template reference...");
       const markdownResume = await generateResumeWithPerplexity(
         resume,
         templateInstructions,
         templatePdfBuffer,
       );
-
       // **3. Convert to PDF**
-      console.log("📄 Converting AI content to PDF...");
       const pdfBuffer = await convertMarkdownToPDF(markdownResume);
 
       // **4. Save generated resume to GridFS**
-      console.log("💾 Saving generated resume to GridFS...");
       const filename = `resume_${resume.userId}_${resume._id}_${Date.now()}.pdf`;
       const gridFSId = await uploadToGridFS(pdfBuffer, filename);
 
@@ -503,7 +497,6 @@ const resumeController = {
     // 4️⃣ AUTO-REGENERATE PDF (if requested)
     let newPdfId = null;
     if (autoRegenerate) {
-      console.log("🔄 Auto-regenerating PDF after feedback...");
 
       // Clear old PDF reference first
       resume.generatedPdfGridFSId = undefined;

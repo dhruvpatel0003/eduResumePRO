@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
-async function generateResumeWithPerplexity(resumeData, templateInstructions, templatePdfBuffer) {
+async function generateResumeWithPerplexity(resumeData, templateInstructions) {
   const prompt = buildResumePrompt(resumeData, templateInstructions);
 
   try {
@@ -111,4 +111,48 @@ ${templateInstructions}
 `;
 }
 
-module.exports = { generateResumeWithPerplexity };
+// utils/perplexityService.js - ADD THIS FUNCTION
+async function generateJobAnalysis(resumeText, jobDescription) {
+  const prompt = `
+Compare resume vs job and generate ATS feedback:
+
+RESUME: ${resumeText.substring(0, 1200)}
+JOB: ${jobDescription.substring(0, 1200)}
+
+Return ONLY valid JSON:
+{
+  "matchScore": 82,
+  "feedback": [
+    {
+      "fieldPath": "experience[0].bullets[1]",
+      "type": "suggestion",
+      "originalValue": "Built React app",
+      "suggestedValue": "Engineered React dashboard reducing load times by 40%",
+      "note": "Quantify performance improvements"
+    }
+  ]
+}`;
+
+  const response = await axios.post(
+    'https://api.perplexity.ai/chat/completions',
+    {
+      model: 'sonar',
+      messages: [
+        { role: 'system', content: 'Expert ATS analyst. Return structured JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 1500
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  return JSON.parse(response.data.choices[0].message.content);
+}
+
+module.exports = { generateResumeWithPerplexity, generateJobAnalysis };
