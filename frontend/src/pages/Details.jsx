@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import resumeService from '../services/resumeService';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
 import TabOverview from '../components/details/TabOverview';
 import PersonalTab from '../components/details/PersonalTab';
@@ -48,7 +49,10 @@ const createEntry = (tab) => {
 
 const Details = () => {
   const navigate = useNavigate();
+  const { resumeId } = useParams();
   const { user } = useAuth();
+  const [loadingResume, setLoadingResume] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const [currentTab, setCurrentTab] = useState('Tab Overview');
   const [selections, setSelections] = useState({});
@@ -106,6 +110,106 @@ const Details = () => {
     detailsLastUpdatedAt != null &&
     resumeLastGeneratedAt != null &&
     detailsLastUpdatedAt > resumeLastGeneratedAt;
+
+  // Load existing resume details when resumeId is present
+  useEffect(() => {
+    if (!resumeId) return;
+
+    const loadResumeDetails = async () => {
+      setLoadingResume(true);
+      setLoadError('');
+      try {
+        const data = await resumeService.getDetails(resumeId);
+        const info = data.templateInfo || {};
+
+        // Populate personal info
+        if (info.personalInfo) {
+          const p = info.personalInfo;
+          setPersonal({
+            firstName: p.fullName?.split(' ')[0] || '',
+            lastName: p.fullName?.split(' ').slice(1).join(' ') || '',
+            email: p.email || user?.email || '',
+            phone: p.phone || '',
+            location: p.location || '',
+            github: (p.links || []).find(l => l.includes('github'))?.replace(/^https?:\/\//, '') || '',
+          });
+        }
+
+        // Populate education
+        if (info.education?.length > 0) {
+          setEducationEntries(info.education.map((e, i) => ({
+            id: e._id || String(100 + i),
+            degree: e.degree || '',
+            program: e.fieldOfStudy || e.program || '',
+            location: e.institution || e.location || '',
+            cgpa: e.gpa || e.cgpa || '',
+            startDate: e.startDate || '',
+            endDate: e.endDate || '',
+          })));
+        }
+
+        // Populate skills
+        if (info.skills?.length > 0) {
+          const skillMap = { languages: '', technologies: '', databases: '', tools: '' };
+          info.skills.forEach(s => {
+            const cat = s.category?.toLowerCase() || '';
+            if (cat.includes('language')) skillMap.languages = s.skills?.join(', ') || s.name || '';
+            else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = s.skills?.join(', ') || s.name || '';
+            else if (cat.includes('database')) skillMap.databases = s.skills?.join(', ') || s.name || '';
+            else if (cat.includes('tool')) skillMap.tools = s.skills?.join(', ') || s.name || '';
+            else if (!skillMap.technologies) skillMap.technologies = s.skills?.join(', ') || s.name || '';
+          });
+          setSkills(skillMap);
+        }
+
+        // Populate experience
+        if (info.experience?.length > 0) {
+          setExperienceEntries(info.experience.map((e, i) => ({
+            id: e._id || String(200 + i),
+            company: e.company || '',
+            location: e.location || '',
+            startDate: e.startDate || '',
+            endDate: e.endDate || '',
+            role: e.title || e.role || '',
+            description: e.description || (e.highlights || []).join('\n') || '',
+          })));
+        }
+
+        // Populate projects
+        if (info.projects?.length > 0) {
+          setProjectEntries(info.projects.map((p, i) => ({
+            id: p._id || String(300 + i),
+            name: p.name || p.title || '',
+            location: p.location || '',
+            startDate: p.startDate || '',
+            endDate: p.endDate || '',
+            role: p.role || '',
+            description: p.description || (p.highlights || []).join('\n') || '',
+            githubUrl: p.url || p.githubUrl || '',
+          })));
+        }
+
+        // Populate certifications as activities if present
+        if (info.certifications?.length > 0) {
+          setActivityEntries(info.certifications.map((c, i) => ({
+            id: c._id || String(400 + i),
+            name: c.name || '',
+            location: c.issuer || '',
+            startDate: c.date || '',
+            endDate: '',
+            role: '',
+            description: '',
+          })));
+        }
+      } catch (err) {
+        setLoadError(err || 'Failed to load resume details');
+      } finally {
+        setLoadingResume(false);
+      }
+    };
+
+    loadResumeDetails();
+  }, [resumeId]);
 
   // Track detail changes for stale detection
   const markDetailsUpdated = useCallback(() => {
@@ -215,10 +319,65 @@ const Details = () => {
   };
 
   // Save
-  const handleSave = () => {
-    // TODO: persist to backend
-    markDetailsUpdated();
-    alert('Changes saved for ' + currentTab);
+  const handleSave = async () => {
+    if (!resumeId) {
+      markDetailsUpdated();
+      alert('No resume ID — save from a created resume.');
+      return;
+    }
+
+    try {
+      const templateInfo = {
+        personalInfo: {
+          fullName: `${personal.firstName} ${personal.lastName}`.trim(),
+          email: personal.email,
+          phone: personal.phone,
+          location: personal.location,
+          links: personal.github ? [`https://${personal.github.replace(/^https?:\/\//, '')}`] : [],
+        },
+        education: educationEntries.map(e => ({
+          degree: e.degree,
+          fieldOfStudy: e.program,
+          institution: e.location,
+          gpa: e.cgpa,
+          startDate: e.startDate,
+          endDate: e.endDate,
+        })),
+        skills: [
+          { category: 'Languages', skills: skills.languages.split(',').map(s => s.trim()).filter(Boolean) },
+          { category: 'Technologies', skills: skills.technologies.split(',').map(s => s.trim()).filter(Boolean) },
+          { category: 'Databases', skills: skills.databases.split(',').map(s => s.trim()).filter(Boolean) },
+          { category: 'Tools', skills: skills.tools.split(',').map(s => s.trim()).filter(Boolean) },
+        ].filter(s => s.skills.length > 0),
+        experience: experienceEntries.map(e => ({
+          company: e.company,
+          location: e.location,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          title: e.role,
+          description: e.description,
+        })),
+        projects: projectEntries.map(p => ({
+          name: p.name,
+          location: p.location,
+          startDate: p.startDate,
+          endDate: p.endDate,
+          role: p.role,
+          description: p.description,
+          url: p.githubUrl,
+        })),
+        certifications: activityEntries.map(a => ({
+          name: a.name,
+          issuer: a.location,
+          date: a.startDate,
+        })),
+      };
+
+      await resumeService.updateDetails(resumeId, templateInfo);
+      markDetailsUpdated();
+    } catch (err) {
+      alert(err || 'Failed to save changes');
+    }
   };
 
   // Update helpers (with stale tracking)
@@ -251,6 +410,11 @@ const Details = () => {
   };
 
   const handleCreateResume = async () => {
+    if (!resumeId) {
+      setGenerationError('No resume ID — create a resume from a template first.');
+      return;
+    }
+
     if (!hasRequiredData()) {
       setGenerationError('Complete required sections first (Personal + at least one content section).');
       return;
@@ -260,11 +424,18 @@ const Details = () => {
       setIsGeneratingResume(true);
       setGenerationError('');
 
-      // TODO: replace with real API call — resumeService.generate(templateId)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const data = await resumeService.generatePdf(resumeId);
 
-      // Mock: set preview URL to null (placeholder will show)
-      setResumePreviewUrl(null);
+      // Try to load the PDF for preview
+      let previewUrl = null;
+      try {
+        const pdfBlob = await resumeService.downloadPdf(resumeId);
+        previewUrl = URL.createObjectURL(pdfBlob);
+      } catch {
+        // Preview may not be available immediately
+      }
+
+      setResumePreviewUrl(previewUrl);
       setResumeGenerated(true);
       setResumeDownloaded(false);
       setResumeLastGeneratedAt(Date.now());
@@ -275,11 +446,23 @@ const Details = () => {
     }
   };
 
-  const handleDownloadResume = () => {
-    if (!resumeGenerated) return;
-    // TODO: real download logic
-    setResumeDownloaded(true);
-    alert('Resume downloaded.');
+  const handleDownloadResume = async () => {
+    if (!resumeGenerated || !resumeId) return;
+
+    try {
+      const pdfBlob = await resumeService.downloadPdf(resumeId);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${personal.firstName || 'resume'}_${personal.lastName || ''}.pdf`.trim();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setResumeDownloaded(true);
+    } catch (err) {
+      alert(err || 'Failed to download resume.');
+    }
   };
 
   // --- Navigation guard ---
@@ -388,6 +571,22 @@ const Details = () => {
 
   const isRepeatable = REPEATABLE_TABS.includes(currentTab);
   const isCreateResumeTab = currentTab === 'Create Resume';
+
+  if (loadingResume) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+        <div className="resumes-spinner" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+        {loadError}
+      </div>
+    );
+  }
 
   return (
     <div>

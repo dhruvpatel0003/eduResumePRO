@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
+import resumeService from '../services/resumeService';
 import '../styles/professor-dashboard.css';
 import '../styles/dashboard.css';
 
@@ -15,34 +16,20 @@ const TIME_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'not_started', label: 'Not Started' },
   { value: 'pending', label: 'Pending' },
-  { value: 'started', label: 'Started' },
+  { value: 'viewed', label: 'Viewed' },
   { value: 'completed', label: 'Completed' },
   { value: 'all', label: 'All' },
 ];
 
 const PAGE_SIZE = 4;
 
-// Mock data — replace with real API calls
-const MOCK_REQUESTS = [
-  { id: 'req1', studentName: 'ABC Student', level: 'Graduate', major: 'Computer Engineering', requestedDate: '02/11/2026', status: 'Not Started' },
-  { id: 'req2', studentName: 'DEF Student', level: 'Undergraduate', major: 'Electrical Engineering', requestedDate: '02/11/2026', status: 'Not Started' },
-  { id: 'req3', studentName: 'GHI Student', level: 'Graduate', major: 'Computer Science', requestedDate: '02/10/2026', status: 'Pending' },
-  { id: 'req4', studentName: 'JKL Student', level: 'Graduate', major: 'Computer Engineering', requestedDate: '02/09/2026', status: 'Not Started' },
-  { id: 'req5', studentName: 'MNO Student', level: 'Undergraduate', major: 'Mechanical Engineering', requestedDate: '02/08/2026', status: 'Started' },
-  { id: 'req6', studentName: 'PQR Student', level: 'Graduate', major: 'Business Administration', requestedDate: '02/07/2026', status: 'Not Started' },
-  { id: 'req7', studentName: 'STU Student', level: 'Graduate', major: 'Computer Engineering', requestedDate: '02/06/2026', status: 'Pending' },
-  { id: 'req8', studentName: 'VWX Student', level: 'Undergraduate', major: 'Biology', requestedDate: '02/05/2026', status: 'Not Started' },
-];
-
 const getStatusClass = (status) => {
-  switch (status) {
-    case 'Not Started': return 'not-started';
-    case 'Pending': return 'pending';
-    case 'Started': return 'started';
-    case 'Completed': return 'completed';
-    default: return '';
+  switch (status?.toLowerCase()) {
+    case 'pending': return 'pending';
+    case 'viewed': return 'started';
+    case 'completed': return 'completed';
+    default: return 'not-started';
   }
 };
 
@@ -52,13 +39,13 @@ const ProfessorDashboard = () => {
   // Filter state
   const [sharedWith, setSharedWith] = useState('me');
   const [timeFilter, setTimeFilter] = useState('most_recent');
-  const [statusFilter, setStatusFilter] = useState('not_started');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Applied filters
   const [appliedFilters, setAppliedFilters] = useState({
     sharedWith: 'me',
     time: 'most_recent',
-    status: 'not_started',
+    status: 'all',
   });
 
   // Data state
@@ -77,25 +64,32 @@ const ProfessorDashboard = () => {
     setError('');
 
     try {
-      // TODO: replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const data = await resumeService.getFacultyResumes();
+      let allRequests = (data.resumes || []).map(r => ({
+        id: r.resumeId,
+        studentName: r.student?.name || 'Unknown',
+        level: '—',
+        major: r.student?.email || '—',
+        requestedDate: r.sharedAt
+          ? new Date(r.sharedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : '',
+        status: r.status || 'pending',
+      }));
 
-      // Mock filtering
-      let filtered = [...MOCK_REQUESTS];
+      // Client-side filtering
       if (filters.status !== 'all') {
-        const statusMap = {
-          not_started: 'Not Started',
-          pending: 'Pending',
-          started: 'Started',
-          completed: 'Completed',
-        };
-        filtered = filtered.filter(r => r.status === statusMap[filters.status]);
+        allRequests = allRequests.filter(r => r.status.toLowerCase() === filters.status);
+      }
+
+      // Sort
+      if (filters.time === 'oldest') {
+        allRequests.reverse();
       }
 
       const start = (page - 1) * PAGE_SIZE;
       const end = start + PAGE_SIZE;
-      setRequests(filtered.slice(start, end));
-      setTotalCount(filtered.length);
+      setRequests(allRequests.slice(start, end));
+      setTotalCount(allRequests.length);
       setSelectedId(null);
     } catch (err) {
       setError('Failed to load requests. Please try again.');
@@ -121,11 +115,11 @@ const ProfessorDashboard = () => {
   const handleReset = () => {
     setSharedWith('me');
     setTimeFilter('most_recent');
-    setStatusFilter('not_started');
+    setStatusFilter('all');
     setAppliedFilters({
       sharedWith: 'me',
       time: 'most_recent',
-      status: 'not_started',
+      status: 'all',
     });
     setCurrentPage(1);
   };

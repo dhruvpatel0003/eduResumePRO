@@ -22,68 +22,106 @@ api.interceptors.request.use(
 );
 
 const resumeService = {
-  create: async (resumeData) => {
+  createFromTemplate: async (templateId, title) => {
     try {
-      const response = await api.post('/resumes', resumeData);
+      const response = await api.post('/resumes/from-template', { templateId, title });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to create resume';
     }
   },
 
-  getAll: async () => {
+  getMyResumes: async () => {
     try {
-      const response = await api.get('/resumes');
+      const response = await api.get('/resumes/my-resumes');
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to fetch resumes';
     }
   },
 
-  getById: async (id) => {
+  getDetails: async (resumeId) => {
     try {
-      const response = await api.get(`/resumes/${id}`);
+      const response = await api.get(`/resumes/${resumeId}/details`);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to fetch resume';
     }
   },
 
-  update: async (id, resumeData) => {
+  updateDetails: async (resumeId, templateInfo) => {
     try {
-      const response = await api.put(`/resumes/${id}`, resumeData);
+      const response = await api.put(`/resumes/${resumeId}/details`, { templateInfo });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to update resume';
     }
   },
 
-  delete: async (id) => {
+  generatePdf: async (resumeId) => {
     try {
-      const response = await api.delete(`/resumes/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to delete resume';
-    }
-  },
-
-  publish: async (id) => {
-    try {
-      const response = await api.post(`/resumes/${id}/publish`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to publish resume';
-    }
-  },
-
-  generate: async (templateId) => {
-    try {
-      const response = await api.post('/resumes/generate', { templateId });
+      const response = await api.post(`/resumes/${resumeId}/generate`);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Could not generate resume. Try again.';
     }
-  }
+  },
+
+  downloadPdf: async (resumeId) => {
+    try {
+      const response = await api.get(`/resumes/${resumeId}/pdf`, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to download resume PDF';
+    }
+  },
+
+  share: async (resumeId, facultyId) => {
+    try {
+      const response = await api.post(`/resumes/${resumeId}/share`, { facultyId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to share resume';
+    }
+  },
+
+  getFacultyResumes: async () => {
+    try {
+      const response = await api.get('/resumes/faculty/resumes');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to fetch faculty resumes';
+    }
+  },
+
+  addFacultyFeedback: async (resumeId, comments) => {
+    try {
+      const response = await api.post(`/resumes/${resumeId}/feedback`, { comments });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to add feedback';
+    }
+  },
+
+  getFeedback: async (resumeId) => {
+    try {
+      const response = await api.get(`/resumes/${resumeId}/feedback`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to fetch feedback';
+    }
+  },
+
+  acceptAllFeedback: async (resumeId) => {
+    try {
+      const response = await api.post(`/resumes/${resumeId}/feedback/accept-all`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to accept feedback';
+    }
+  },
 };
 
 export default resumeService;

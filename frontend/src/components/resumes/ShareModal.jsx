@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import resumeService from '../../services/resumeService';
 
-// Mock professors — replace with real API call (e.g., userService.getProfessors())
+// Hardcoded professors — no backend route to list professors
 const MOCK_PROFESSORS = [
   {
     _id: 'p1',
@@ -89,11 +90,10 @@ const ShareModal = ({ resumeId, onShare, onCancel }) => {
     setSharing(true);
     setError('');
     try {
-      // TODO: replace with real API call (e.g., resumeService.share(resumeId, professorId))
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await resumeService.share(resumeId, selectedProfessorId);
       onShare(selectedProfessorId);
     } catch (err) {
-      setError('Failed to share resume. Please try again.');
+      setError(err || 'Failed to share resume. Please try again.');
       setSharing(false);
     }
   };

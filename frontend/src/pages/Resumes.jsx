@@ -25,8 +25,8 @@ const Resumes = () => {
     try {
       setLoading(true);
       setError('');
-      const data = await resumeService.getAll();
-      setResumes(data);
+      const data = await resumeService.getMyResumes();
+      setResumes(data.resumes || []);
     } catch (err) {
       setError(err || 'Failed to fetch resumes');
     } finally {
@@ -40,16 +40,8 @@ const Resumes = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedResumeId) return;
-    try {
-      await resumeService.delete(selectedResumeId);
-      setResumes((prev) => prev.filter((r) => r._id !== selectedResumeId));
-      setSelectedResumeId(null);
-      setShowDeleteModal(false);
-    } catch (err) {
-      setError(err || 'Failed to delete resume');
-      setShowDeleteModal(false);
-    }
+    // No backend delete route — close modal
+    setShowDeleteModal(false);
   };
 
   const handleShareSuccess = () => {
