@@ -134,6 +134,66 @@ ${templateInstructions}
 `;
 }
 
+function buildReportPrompt(resumeText) {
+  return `
+Analyze the following resume text and rate it on these criteria:
+
+1. Spellings & Grammar
+2. Sections
+3. Experience Chronological Order
+4. Experience Details
+5. Educational Details
+6. Skill Relevance
+7. CourseWork
+8. Skill Match
+9. Competency Match
+10. Font Size & Choice
+11. Margins
+12. Line Spacing
+13. Bullet Point Format
+14. Date Format
+15. Length
+16. Contact Information
+17. Pronouns
+
+For each criterion, give a score from 0-100 and 1-2 sentence feedback.
+
+THEN propose specific, small edits to improve the resume at the field/bullet level. 
+Each suggestion must target an existing field path in the JSON schema (experience[i].bullets[j], education[i].degree, skills[k], etc.) and replace only that string with a better version.
+
+Resume text:
+${resumeText.substring(0, 4000)}
+
+Return ONLY valid JSON in this exact structure:
+
+{
+  "overallScore": 82,
+  "criteria": [
+    {
+      "name": "Spellings & Grammar",
+      "score": 90,
+      "feedback": "Short comment here.",
+      "autoFixAvailable": false
+    }
+  ],
+  "aiSuggestions": [
+    {
+      "fieldPath": "experience[0].bullets[1]",
+      "type": "suggestion",
+      "originalValue": "Existing text exactly as in the resume",
+      "suggestedValue": "Improved SINGLE-LINE version with action verb and metrics",
+      "note": "Why this is better."
+    }
+  ]
+}
+
+Rules:
+- suggestedValue MUST be a single-line string (no line breaks).
+- Do NOT rewrite entire sections; only edit individual bullets/fields.
+- Keep feedback professional and ATS-friendly.
+`;
+}
+
 // utils/perplexityService.js - ADD THIS FUNCTION
 async function generateJobAnalysis(resumeText, jobDescription) {
   const prompt = `
@@ -191,4 +251,4 @@ CRITICAL: suggestedValue must be SINGLE LINE strings, never multi-line or full s
   return JSON.parse(response.data.choices[0].message.content);
 }
 
-module.exports = { generateResumeWithPerplexity, generateJobAnalysis };
+module.exports = { generateResumeWithPerplexity, generateJobAnalysis, buildReportPrompt };
