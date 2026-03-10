@@ -4,6 +4,7 @@ const { getFileBufferFromGridFS, uploadToGridFS } = require("../config/gridfs");
 const { generateResumeWithPerplexity } = require("../utils/perplexityService");
 const { convertMarkdownToPDF } = require("../utils/pdfService");
 const { enhanceProjectDescriptions } = require("../utils/projectEnhancer");
+const { applyFieldPathUpdate } = require("../utils/fieldPathUpdate");
 // const pdfParse = require("pdf-parse");
 // const { deriveSectionsFromPdfText } = require('../utils/sections');
 
@@ -15,27 +16,6 @@ const DEFAULT_SECTIONS = [
   "projects",
   "certifications",
 ];
-function applyFieldPathUpdate(rootObj, fieldPath, newValue) {
-  if (!rootObj || !fieldPath) return;
-
-  const segments = fieldPath
-    .replace(/\]/g, "")
-    .split(".")
-    .map((s) => s.replace("[", "."))
-    .join(".")
-    .split(".");
-
-  let obj = rootObj;
-  for (let i = 0; i < segments.length - 1; i++) {
-    const key = segments[i];
-    if (obj == null || !(key in obj)) return; // invalid path, ignore
-    obj = obj[key];
-  }
-  const lastKey = segments[segments.length - 1];
-  if (obj != null) {
-    obj[lastKey] = newValue;
-  }
-}
 
 const resumeController = {
   createFromTemplate: async (req, res) => {
