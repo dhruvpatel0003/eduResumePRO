@@ -35,7 +35,7 @@ jobs:
         run: npm run test --if-present -- --coverage
         env:
           NODE_ENV: test
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -61,29 +61,29 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: npm install
-      
+
       - name: Run tests
         working-directory: ./frontend
         run: npm test -- --coverage --watchAll=false --passWithNoTests
-      
+
       - name: Build application
         working-directory: ./frontend
         run: npm run build
 
   codeql-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: 'javascript'
-      
+          languages: javascript
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
-      
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
@@ -91,12 +91,12 @@ jobs:
 
   gitleaks-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
+
       - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -105,15 +105,13 @@ jobs:
   build-backend-image:
     needs: [backend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      
+
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
@@ -121,7 +119,7 @@ jobs:
           push: false
           tags: eduresume-backend:latest
           outputs: type=docker,dest=/tmp/backend-image.tar
-      
+
       - name: Upload backend image
         uses: actions/upload-artifact@v3
         with:
@@ -131,15 +129,13 @@ jobs:
   build-frontend-image:
     needs: [frontend-tests, codeql-scan, gitleaks-scan]
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      
+
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
@@ -147,7 +143,7 @@ jobs:
           push: false
           tags: eduresume-frontend:latest
           outputs: type=docker,dest=/tmp/frontend-image.tar
-      
+
       - name: Upload frontend image
         uses: actions/upload-artifact@v3
         with:
@@ -157,95 +153,87 @@ jobs:
   trivy-scan:
     needs: [build-backend-image, build-frontend-image]
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Download backend image
         uses: actions/download-artifact@v3
         with:
           name: backend-image
           path: /tmp
-      
+
       - name: Download frontend image
         uses: actions/download-artifact@v3
         with:
           name: frontend-image
           path: /tmp
-      
+
       - name: Load backend image
         run: docker load --input /tmp/backend-image.tar
-      
+
       - name: Load frontend image
         run: docker load --input /tmp/frontend-image.tar
-      
+
       - name: Run Trivy scan on backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'eduresume-backend:latest'
-          format: 'sarif'
-          output: 'backend-trivy-results.sarif'
-      
+          image-ref: eduresume-backend:latest
+          format: sarif
+          output: backend-trivy-results.sarif
+
       - name: Run Trivy scan on frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'eduresume-frontend:latest'
-          format: 'sarif'
-          output: 'frontend-trivy-results.sarif'
-      
-      - name: Upload Trivy results
+          image-ref: eduresume-frontend:latest
+          format: sarif
+          output: frontend-trivy-results.sarif
+
+      - name: Upload Trivy results (backend)
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: 'backend-trivy-results.sarif'
-          category: 'trivy-backend'
-      
-      - name: Upload Trivy results frontend
+          sarif_file: backend-trivy-results.sarif
+          category: trivy-backend
+
+      - name: Upload Trivy results (frontend)
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: 'frontend-trivy-results.sarif'
-          category: 'trivy-frontend'
+          sarif_file: frontend-trivy-results.sarif
+          category: trivy-frontend
+
   deploy-render:
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'dhruvpatel0003/eduresumepro'
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.base_ref == 'main')
 
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    # Frontend Deploy Hook
-    - name: Deploy Frontend to Render
-      run: |
-        curl -X POST \
-          ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }} \
-          -H 'Content-Type: application/json'
-    
-    # Backend Deploy Hook  
-    - name: Deploy Backend to Render
-      run: |
-        curl -X POST \
-          ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}   \
-          -H 'Content-Type: application/json'
+      - uses: actions/checkout@v3
+
+      - name: Deploy Frontend to Render
+        run: |
+          curl -X POST \
+            "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" \
+            -H 'Content-Type: application/json'
+
+      - name: Deploy Backend to Render
+        run: |
+          curl -X POST \
+            "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" \
+            -H 'Content-Type: application/json'
+
   ci-status:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
     if: always()
-    
+
     steps:
       - name: Check CI Status
         run: |
           if [[ "${{ needs.backend-tests.result }}" != "success" ||
                 "${{ needs.frontend-tests.result }}" != "success" ||
                 "${{ needs.codeql-scan.result }}" != "success" ||
-                "${{ needs.gitleaks-scan.result }}" != "success" ]]; then
+                "${{ needs.gitleaks-scan.result }}" != "success" ||
+                "${{ needs.trivy-scan.result }}" != "success" ]]; then
             echo "❌ CI/Security checks failed"
-            exit 1
-          fi
-          if [[ "${{ needs.trivy-scan.result }}" == "failure" ]]; then
-            echo "❌ Trivy scan failed"
             exit 1
           fi
           echo "✅ All CI/Security checks passed"
