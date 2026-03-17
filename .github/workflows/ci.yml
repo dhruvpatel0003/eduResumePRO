@@ -90,19 +90,19 @@ jobs:
           category: "/language:javascript"
 
   gitleaks-scan:
-  runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - name: Run Gitleaks via Docker
-      run: |
-        docker run --rm \
-          -v "${PWD}:/repo" \
-          ghcr.io/gitleaks/gitleaks:latest \
-          detect --source="/repo" --no-git --redact
+      - name: Run Gitleaks via Docker
+        run: |
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            detect --source="/repo" --no-git --redact
 
   build-backend-image:
     needs: [backend-tests, codeql-scan, gitleaks-scan]
