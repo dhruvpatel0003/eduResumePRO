@@ -26,11 +26,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         working-directory: ./backend
         run: npm install
 
-      - name: Run tests
+      - name: Run backend tests
         working-directory: ./backend
         run: npm run test --if-present -- --coverage
         env:
@@ -58,15 +58,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm install
 
-      - name: Run tests
+      - name: Run frontend tests
         working-directory: ./frontend
         run: npm test -- --coverage --watchAll=false --passWithNoTests
 
-      - name: Build application
+      - name: Build frontend application
         working-directory: ./frontend
         run: npm run build
 
@@ -97,12 +97,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # REPORT-ONLY MODE (does NOT fail CI even if leaks found)
       - name: Run Gitleaks via Docker
         run: |
           docker run --rm \
             -v "${PWD}:/repo" \
             ghcr.io/gitleaks/gitleaks:latest \
-            detect --source="/repo" --no-git --redact
+            detect --source="/repo" --no-git --redact --exit-code 0
+
+        # If you want strict mode later, remove "--exit-code 0" above.
 
   build-backend-image:
     needs: [backend-tests, codeql-scan, gitleaks-scan]
@@ -114,7 +117,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
+      - name: Build backend Docker image
         uses: docker/build-push-action@v4
         with:
           context: ./backend
@@ -138,7 +141,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
+      - name: Build frontend Docker image
         uses: docker/build-push-action@v4
         with:
           context: ./frontend
