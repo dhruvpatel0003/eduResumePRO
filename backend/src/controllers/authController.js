@@ -165,10 +165,75 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; 
+    const { name, email, currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update name if provided
+    if (name && name.trim() !== '') {
+      user.name = name.trim();
+    }
+
+    // Update email if provided (and not already used by someone else)
+    if (email && email.trim() !== '' && email !== user.email) {
+      const existing = await User.findOne({ email: email.trim() });
+      if (existing && existing._id.toString() !== userId.toString()) {
+        return res.status(400).json({ message: 'Email is already in use' });
+      }
+      user.email = email.trim();
+    }
+
+    // If user wants to change password
+    if (newPassword) {
+      if (!currentPassword) {
+        return res
+          .status(400)
+          .json({ message: 'Current password is required to set a new password' });
+      }
+
+      const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentValid) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+      user.password = hashed;
+    }
+
+    await user.save();
+
+    // Optionally issue a fresh token (in case email/claims changed)
+    const token = generateToken(user);
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res
+      .status(500)
+      .json({ message: 'Error updating profile', error: error.message });
+  }
+};
+
 module.exports = {
   signup,
   login,
   forgotPassword,
   verifyResetToken,
-  resetPassword
+  resetPassword,
+  updateProfile
 };
