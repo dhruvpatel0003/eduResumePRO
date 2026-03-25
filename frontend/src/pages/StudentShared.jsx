@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import resumeService from '../services/resumeService';
+import DocumentViewer from '../components/DocumentViewer';
 import '../styles/shared.css';
 import '../styles/details.css';
 
@@ -17,6 +18,8 @@ const StudentShared = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [successBanner, setSuccessBanner] = useState('');
   const [sharedEntries, setSharedEntries] = useState([]);
+  const [resumePreviewUrl, setResumePreviewUrl] = useState(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   // Show share success banner from navigation state
   useEffect(() => {
@@ -53,11 +56,11 @@ const StudentShared = () => {
 
           for (const reviewer of reviewers) {
             const prof = reviewer.facultyId || {};
-            const profId = prof._id || prof;
+            const profId = String(prof._id || prof);
 
             // Find feedback thread for this professor
             const thread = feedbackThreads.find(
-              t => (t.facultyId?._id || t.facultyId) === profId
+              t => String(t.facultyId?._id || t.facultyId) === profId
             );
             const comments = thread?.comments || [];
 
@@ -109,9 +112,28 @@ const StudentShared = () => {
     setLoading(true);
     setError('');
 
+    // Revoke previous blob URL
+    if (resumePreviewUrl) {
+      URL.revokeObjectURL(resumePreviewUrl);
+      setResumePreviewUrl(null);
+    }
+
     try {
       const entry = sharedEntries.find(e => e.professorId === selectedProfessor);
       setActiveEntry(entry || null);
+
+      // Load resume PDF preview
+      if (entry) {
+        setLoadingPdf(true);
+        try {
+          const pdfBlob = await resumeService.downloadPdf(entry.resumeId);
+          setResumePreviewUrl(URL.createObjectURL(pdfBlob));
+        } catch {
+          // PDF may not exist yet (not generated)
+        } finally {
+          setLoadingPdf(false);
+        }
+      }
     } catch (err) {
       setError('Failed to load shared document.');
     } finally {
@@ -124,6 +146,10 @@ const StudentShared = () => {
     setSelectedProfessor('');
     setActiveEntry(null);
     setError('');
+    if (resumePreviewUrl) {
+      URL.revokeObjectURL(resumePreviewUrl);
+      setResumePreviewUrl(null);
+    }
   };
 
   // Toggle feedback acceptance
@@ -264,22 +290,44 @@ const StudentShared = () => {
               </div>
               <div className="shared-document-field">
                 <label>Status</label>
-                <span className={`shared-status-badge ${activeEntry.status === 'Under Review' ? 'under-review' : activeEntry.status === 'Resolved' ? 'resolved' : ''}`}>
+                <span className={`shared-status-badge ${activeEntry.status === 'Under Review' ? 'under-review' : activeEntry.status === 'Pending Review' ? 'under-review' : activeEntry.status === 'Resolved' ? 'resolved' : ''}`}>
                   {activeEntry.status}
                 </span>
               </div>
             </div>
           </div>
 
+          {/* Resume Preview */}
+          <div style={{ marginBottom: 16 }}>
+            {loadingPdf ? (
+              <div className="shared-loading">
+                <div className="shared-spinner" />
+              </div>
+            ) : (
+              <DocumentViewer
+                previewUrl={resumePreviewUrl}
+                title={activeEntry.resumeTitle}
+                placeholderLabel="Resume not generated yet"
+              />
+            )}
+          </div>
+
           {/* Feedback Section */}
           <div className="shared-feedback-section">
             <div className="shared-feedback-header">
-              <div className="shared-feedback-title">Feedback</div>
+              <div className="shared-feedback-title">
+                Feedback
+                {activeEntry.feedback.length > 0 && (
+                  <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#6b7280' }}>
+                    ({activeEntry.feedback.length})
+                  </span>
+                )}
+              </div>
               <div className="shared-feedback-actions">
                 <button
                   className="shared-action-link"
                   onClick={handleAcceptAll}
-                  disabled={allAccepted}
+                  disabled={allAccepted || activeEntry.feedback.length === 0}
                 >
                   Accept All
                 </button>
@@ -315,7 +363,7 @@ const StudentShared = () => {
                 ))}
               </div>
             ) : (
-              <div className="shared-empty">No feedback yet.</div>
+              <div className="shared-empty">No feedback from this professor yet.</div>
             )}
           </div>
         </>
