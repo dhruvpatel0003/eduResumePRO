@@ -31,30 +31,25 @@ const templateService = {
     }
   },
 
-  getById: async (id) => {
+  getTemplatePdf: async (templateId) => {
     try {
-      const response = await api.get(`/templates/${id}`);
+      const response = await api.get(`/templates/${templateId}/pdf`, {
+        responseType: 'blob',
+      });
       return response.data;
     } catch (error) {
-      throw error.response?.data?.message || 'Failed to fetch template';
+      throw error.response?.data?.message || 'Failed to fetch template PDF';
     }
   },
 
-  create: async (templateData) => {
+  create: async (formData) => {
     try {
-      const response = await api.post('/templates', templateData);
+      const response = await api.post('/templates', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to create template';
-    }
-  },
-
-  update: async (id, templateData) => {
-    try {
-      const response = await api.put(`/templates/${id}`, templateData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to update template';
     }
   },
 
@@ -66,15 +61,6 @@ const templateService = {
       throw error.response?.data?.message || 'Failed to delete template';
     }
   },
-
-  applyTemplate: async (id) => {
-    try {
-      const response = await api.post(`/templates/${id}/apply`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Could not apply template. Please try again.';
-    }
-  }
 };
 
 export default templateService;

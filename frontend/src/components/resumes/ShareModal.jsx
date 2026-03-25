@@ -1,23 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-
-// Mock professors — replace with real API call (e.g., userService.getProfessors())
-const MOCK_PROFESSORS = [
-  {
-    _id: 'p1',
-    name: 'Prof. ABC',
-    tags: ['Senior Faculty Advisor', 'Resume Viewer', 'Career Advisor'],
-  },
-  {
-    _id: 'p2',
-    name: 'Dr. Sarah Johnson',
-    tags: ['Associate Professor', 'Resume Reviewer'],
-  },
-  {
-    _id: 'p3',
-    name: 'Dr. Michael Chen',
-    tags: ['Department Head', 'Career Mentor'],
-  },
-];
+import resumeService from '../../services/resumeService';
+import authService from '../../services/authService';
 
 const ShareModal = ({ resumeId, onShare, onCancel }) => {
   const [professors, setProfessors] = useState([]);
@@ -72,11 +55,10 @@ const ShareModal = ({ resumeId, onShare, onCancel }) => {
   useEffect(() => {
     const loadProfessors = async () => {
       try {
-        // TODO: replace with real API call
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setProfessors(MOCK_PROFESSORS);
+        const data = await authService.getProfessors();
+        setProfessors(data.professors || []);
       } catch (err) {
-        setError('Failed to load professors');
+        setError(err || 'Failed to load professors');
       } finally {
         setLoading(false);
       }
@@ -89,11 +71,10 @@ const ShareModal = ({ resumeId, onShare, onCancel }) => {
     setSharing(true);
     setError('');
     try {
-      // TODO: replace with real API call (e.g., resumeService.share(resumeId, professorId))
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await resumeService.share(resumeId, selectedProfessorId);
       onShare(selectedProfessorId);
     } catch (err) {
-      setError('Failed to share resume. Please try again.');
+      setError(err || 'Failed to share resume. Please try again.');
       setSharing(false);
     }
   };
@@ -155,9 +136,9 @@ const ShareModal = ({ resumeId, onShare, onCancel }) => {
                   />
                   <div className="share-professor-info">
                     <div className="share-professor-name">{prof.name}</div>
-                    {prof.tags && prof.tags.length > 0 && (
+                    {prof.email && (
                       <div className="share-professor-tags">
-                        {prof.tags.join(' | ')}
+                        {prof.email}
                       </div>
                     )}
                   </div>

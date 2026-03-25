@@ -1,55 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import resumeService from '../services/resumeService';
 import '../styles/shared.css';
 import '../styles/details.css';
-
-// Mock data — replace with real API calls
-const MOCK_SHARED_ENTRIES = [
-  {
-    id: 'se1',
-    resumeId: 'r1',
-    resumeTitle: 'My Resume',
-    professorId: 'p1',
-    professorName: 'Prof. ABC',
-    status: 'Under Review',
-    feedback: [
-      {
-        id: 'fb1',
-        section: 'SKILLS',
-        message: 'Need to update and add more specific',
-        accepted: false,
-      },
-      {
-        id: 'fb2',
-        section: 'EXPERIENCE',
-        message: 'Respell this word to professional experience',
-        accepted: false,
-      },
-      {
-        id: 'fb3',
-        section: 'EDUCATION',
-        message: 'Add GPA if above 3.5',
-        accepted: false,
-      },
-    ],
-  },
-  {
-    id: 'se2',
-    resumeId: 'r1',
-    resumeTitle: 'My Resume',
-    professorId: 'p2',
-    professorName: 'Prof. XYZ',
-    status: 'Resolved',
-    feedback: [
-      {
-        id: 'fb4',
-        section: 'PROJECTS',
-        message: 'Include technologies used in each project',
-        accepted: true,
-      },
-    ],
-  },
-];
 
 const StudentShared = () => {
   const navigate = useNavigate();
@@ -59,23 +12,70 @@ const StudentShared = () => {
   const [selectedProfessor, setSelectedProfessor] = useState('');
   const [activeEntry, setActiveEntry] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [successBanner, setSuccessBanner] = useState('');
+  const [sharedEntries, setSharedEntries] = useState([]);
 
   // Show share success banner from navigation state
   useEffect(() => {
     if (location.state?.shareSuccess) {
       setSuccessBanner('Resume shared successfully!');
-      // Clear the state so it doesn't show on refresh
       window.history.replaceState({}, document.title);
       const timer = setTimeout(() => setSuccessBanner(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [location.state]);
 
+  // Load shared resumes on mount
+  useEffect(() => {
+    const loadSharedResumes = async () => {
+      try {
+        setInitialLoading(true);
+        const data = await resumeService.getMyResumes();
+        const resumes = data.resumes || [];
+
+        // For each resume, load feedback to find shared entries
+        const entries = [];
+        for (const resume of resumes) {
+          try {
+            const feedbackData = await resumeService.getFeedback(resume._id);
+            const threads = feedbackData.feedbackThreads || [];
+            threads.forEach(thread => {
+              const prof = thread.facultyId || {};
+              entries.push({
+                id: `${resume._id}-${prof._id}`,
+                resumeId: resume._id,
+                resumeTitle: resume.title || 'Resume',
+                professorId: prof._id || '',
+                professorName: prof.name || prof.email || 'Professor',
+                status: threads.some(t => (t.comments || []).some(c => c.status === 'pending')) ? 'Under Review' : 'Resolved',
+                feedback: (thread.comments || []).map((c, idx) => ({
+                  id: c._id || `fb-${idx}`,
+                  section: c.fieldPath?.toUpperCase() || 'GENERAL',
+                  message: c.text || '',
+                  accepted: c.status === 'accepted',
+                })),
+              });
+            });
+          } catch {
+            // Resume may have no feedback
+          }
+        }
+        setSharedEntries(entries);
+      } catch (err) {
+        setError(err || 'Failed to load shared resumes');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadSharedResumes();
+  }, []);
+
   // Get unique professors from shared entries
-  const professors = MOCK_SHARED_ENTRIES.reduce((acc, entry) => {
+  const professors = sharedEntries.reduce((acc, entry) => {
     if (!acc.find(p => p.id === entry.professorId)) {
       acc.push({ id: entry.professorId, name: entry.professorName });
     }
@@ -89,9 +89,7 @@ const StudentShared = () => {
     setError('');
 
     try {
-      // TODO: replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 400));
-      const entry = MOCK_SHARED_ENTRIES.find(e => e.professorId === selectedProfessor);
+      const entry = sharedEntries.find(e => e.professorId === selectedProfessor);
       setActiveEntry(entry || null);
     } catch (err) {
       setError('Failed to load shared document.');
@@ -121,14 +119,28 @@ const StudentShared = () => {
   };
 
   // Accept All feedback
-  const handleAcceptAll = () => {
-    setActiveEntry(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        feedback: prev.feedback.map(f => ({ ...f, accepted: true })),
-      };
-    });
+  const handleAcceptAll = async () => {
+    if (!activeEntry?.resumeId) return;
+
+    try {
+      await resumeService.acceptAllFeedback(activeEntry.resumeId);
+      setActiveEntry(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          feedback: prev.feedback.map(f => ({ ...f, accepted: true })),
+        };
+      });
+    } catch {
+      // Fall back to client-side only
+      setActiveEntry(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          feedback: prev.feedback.map(f => ({ ...f, accepted: true })),
+        };
+      });
+    }
   };
 
   const hasAcceptedFeedback = activeEntry?.feedback.some(f => f.accepted) || false;
@@ -283,10 +295,19 @@ const StudentShared = () => {
         </>
       )}
 
+      {/* Initial loading state */}
+      {initialLoading && (
+        <div className="shared-loading">
+          <div className="shared-spinner" />
+        </div>
+      )}
+
       {/* Empty state */}
-      {!loading && !activeEntry && !error && (
+      {!loading && !initialLoading && !activeEntry && !error && (
         <div className="shared-empty">
-          Select a professor to view shared documents and feedback.
+          {sharedEntries.length === 0
+            ? 'No shared resumes found. Share a resume with a professor first.'
+            : 'Select a professor to view shared documents and feedback.'}
         </div>
       )}
 

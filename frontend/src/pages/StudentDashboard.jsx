@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
+import jobService from '../services/jobService';
 import '../styles/dashboard.css';
 
 // Filter options — extensible for future additions
@@ -9,18 +10,6 @@ const FILTER_OPTIONS = [
 
 const DEFAULT_FILTER = 'most_recent';
 const PAGE_SIZE = 4;
-
-// Mock data — replace with real API calls
-const MOCK_JOBS = [
-  { id: 'j1', title: 'Mobile Application Developer', company: 'Apple Inc.', location: 'NewJersy, NJ', postedDate: '02/11/2026' },
-  { id: 'j2', title: 'Mobile Application Developer', company: 'Apple Inc.', location: 'NewJersy, NJ', postedDate: '02/11/2026' },
-  { id: 'j3', title: 'Mobile Application Developer', company: 'Apple Inc.', location: 'NewJersy, NJ', postedDate: '02/11/2026' },
-  { id: 'j4', title: 'Mobile Application Developer', company: 'Apple Inc.', location: 'NewJersy, NJ', postedDate: '02/11/2026' },
-  { id: 'j5', title: 'Frontend Engineer', company: 'Google LLC', location: 'Mountain View, CA', postedDate: '02/10/2026' },
-  { id: 'j6', title: 'Backend Developer', company: 'Amazon Web Services', location: 'Seattle, WA', postedDate: '02/09/2026' },
-  { id: 'j7', title: 'Full Stack Developer', company: 'Microsoft Corp.', location: 'Redmond, WA', postedDate: '02/08/2026' },
-  { id: 'j8', title: 'DevOps Engineer', company: 'Netflix Inc.', location: 'Los Gatos, CA', postedDate: '02/07/2026' },
-];
 
 const StudentDashboard = () => {
   // Filter state
@@ -42,14 +31,21 @@ const StudentDashboard = () => {
     setError('');
 
     try {
-      // TODO: replace with real API call using filter + page + PAGE_SIZE
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const data = await jobService.getAll();
+      const allJobs = (Array.isArray(data) ? data : data.jobs || []).map(job => ({
+        id: job._id || job.id,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        postedDate: job.postedDate
+          ? new Date(job.postedDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : '',
+      }));
 
-      // Mock: return slice of mock data
       const start = (page - 1) * PAGE_SIZE;
       const end = start + PAGE_SIZE;
-      setJobs(MOCK_JOBS.slice(start, end));
-      setTotalCount(MOCK_JOBS.length);
+      setJobs(allJobs.slice(start, end));
+      setTotalCount(allJobs.length);
     } catch (err) {
       setError('Failed to load job openings. Please try again.');
     } finally {

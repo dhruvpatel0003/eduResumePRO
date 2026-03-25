@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon } from '../components/layout/icons';
 import DocumentViewer from '../components/DocumentViewer';
+import resumeService from '../services/resumeService';
+import professorService from '../services/professorService';
 import '../styles/professor-request.css';
 import '../styles/details.css';
 
@@ -14,24 +16,6 @@ const FEEDBACK_CATEGORIES = [
   'PERSONAL',
   'SUMMARY',
 ];
-
-// Mock data — replace with real API calls
-const MOCK_REQUEST_DETAIL = {
-  id: 'req1',
-  studentName: 'ABC Student',
-  level: 'Graduate',
-  major: 'Computer Engineering',
-  requestedDate: '02/11/2026',
-  status: 'Not Started',
-  resumeUrl: null,
-  feedback: [
-    { id: 'fb1', category: 'SKILLS', text: 'Need to update and add more specific skills related to the job.', createdAt: '2026-02-17T10:00:00Z' },
-    { id: 'fb2', category: 'EXPERIENCE', text: 'Respell this word to professional experience.', createdAt: '2026-02-17T10:05:00Z' },
-    { id: 'fb3', category: 'EDUCATION', text: 'Add GPA if above 3.5.', createdAt: '2026-02-17T10:10:00Z' },
-    { id: 'fb4', category: 'PROJECTS', text: 'Include technologies used in each project description.', createdAt: '2026-02-17T10:15:00Z' },
-    { id: 'fb5', category: 'SKILLS', text: 'Add certifications section if any cloud or technical certifications exist.', createdAt: '2026-02-17T10:20:00Z' },
-  ],
-};
 
 const ProfessorRequestDetail = () => {
   const { requestId } = useParams();
@@ -62,9 +46,47 @@ const ProfessorRequestDetail = () => {
       setError('');
 
       try {
-        // TODO: replace with real API call — GET /professor/requests/:requestId
-        await new Promise(resolve => setTimeout(resolve, 400));
-        setRequest({ ...MOCK_REQUEST_DETAIL, id: requestId });
+        const [detailsData, feedbackData] = await Promise.all([
+          resumeService.getDetails(requestId),
+          resumeService.getFeedback(requestId),
+        ]);
+
+        // Build feedback list from threads
+        const feedbackItems = [];
+        const threads = feedbackData.feedbackThreads || [];
+        threads.forEach(thread => {
+          (thread.comments || []).forEach((comment, idx) => {
+            feedbackItems.push({
+              id: comment._id || `fb-${thread.facultyId?._id}-${idx}`,
+              category: comment.fieldPath?.toUpperCase() || 'GENERAL',
+              text: comment.text || '',
+              createdAt: comment.createdAt || new Date().toISOString(),
+            });
+          });
+        });
+
+        // Get PDF blob URL for viewer
+        let resumeUrl = null;
+        try {
+          const pdfBlob = await resumeService.downloadPdf(requestId);
+          resumeUrl = URL.createObjectURL(pdfBlob);
+        } catch {
+          // PDF may not exist yet
+        }
+
+        const personalInfo = detailsData.templateInfo?.personalInfo || {};
+        setRequest({
+          id: requestId,
+          studentName: personalInfo.fullName || 'Student',
+          level: '—',
+          major: detailsData.template?.name || '—',
+          requestedDate: detailsData.templateInfo?.updatedAt
+            ? new Date(detailsData.templateInfo.updatedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+            : '',
+          status: 'In Progress',
+          resumeUrl,
+          feedback: feedbackItems,
+        });
       } catch (err) {
         setError('Failed to load request details.');
       } finally {
@@ -97,8 +119,12 @@ const ProfessorRequestDetail = () => {
     if (!editorText.trim()) return;
 
     try {
-      // TODO: replace with real API call — POST /professor/requests/:requestId/feedback
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await resumeService.addFacultyFeedback(requestId, [
+        {
+          fieldPath: editorCategory.toLowerCase(),
+          text: editorText.trim(),
+        },
+      ]);
 
       const newFeedback = {
         id: `fb-${Date.now()}`,
@@ -143,8 +169,9 @@ const ProfessorRequestDetail = () => {
     if (selectedFeedbackIds.size === 0) return;
 
     try {
-      // TODO: replace with real API call — DELETE /professor/requests/:requestId/feedback (bulk)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delete each feedback item individually via /api/feedback/:id
+      const idsToDelete = Array.from(selectedFeedbackIds);
+      await Promise.all(idsToDelete.map(id => professorService.deleteFeedback(id)));
 
       setRequest(prev => ({
         ...prev,
@@ -174,9 +201,7 @@ const ProfessorRequestDetail = () => {
 
   const handleConfirmSubmit = async () => {
     try {
-      // TODO: replace with real API call — POST /professor/requests/:requestId/submit
-      await new Promise(resolve => setTimeout(resolve, 400));
-
+      // No dedicated submit route — feedback is already saved per-item
       setShowSubmitModal(false);
       navigate('/dashboard');
     } catch (err) {
