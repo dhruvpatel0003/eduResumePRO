@@ -337,7 +337,8 @@ const resumeController = {
   },
   listSharedResumesForFaculty: async (req, res) => {
     const facultyId = req.user.id;
-    if (req.user.role.toLowerCase() !== "faculty") {
+    const role = req.user.role.toLowerCase();
+    if (role !== "faculty" && role !== "professor") {
       return res
         .status(403)
         .json({ message: "Only faculty can view shared resumes" });
@@ -365,7 +366,8 @@ const resumeController = {
     const { resumeId } = req.params;
     const { comments } = req.body;
 
-    if (req.user.role.toLowerCase() !== "faculty") {
+    const role = req.user.role.toLowerCase();
+    if (role !== "faculty" && role !== "professor") {
       return res
         .status(403)
         .json({ message: "Only faculty can add feedback to resumes" });

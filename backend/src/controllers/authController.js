@@ -229,11 +229,22 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const getProfessors = async (req, res) => {
+  try {
+    const professors = await User.find({ role: 'professor' }).select('name email _id');
+    res.status(200).json({ professors });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch professors' });
+  }
+};
+
 module.exports = {
   signup,
   login,
   forgotPassword,
   verifyResetToken,
   resetPassword,
-  updateProfile
+  updateProfile,
+  getProfessors
 };
