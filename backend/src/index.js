@@ -9,29 +9,47 @@ const jobOpeningRoutes = require('./routes/jobOpeningRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const decriptionRoutes = require('./routes/descriptionRoutes');
 const githubRoutes = require('./routes/githubRoutes');
+const hunterRoutes = require('./routes/hunterRoutes');
+const reportRoutes = require("./routes/reportRoutes");
 const mongoose = require('mongoose');
 const { initGridFS } = require('./config/gridfs');
+
+// Prometheus metrics
+const promBundle = require('express-prom-bundle');
+const client = require('prom-client');
+
 // Load environment variables
 dotenv.config();
 
 // Initialize app
 const app = express();
 
-// Middleware
+// Middleware - PROMETHEUS FIRST (BEFORE other routes)
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
 
+// ✅ FIXED: Prometheus middleware BEFORE all routes
+app.use(promBundle({
+  includeMethod: true,      // Track GET/POST/etc
+  includePath: true,        // Track paths
+  includeStatusCode: true,  // Track 200/404/500
+  autoregister: true        // Auto-creates /metrics endpoint
+}));
+
+// ✅ Collect default metrics (CPU, memory, etc)
+client.collectDefaultMetrics();
 
 // Database connection
 if (process.env.NODE_ENV !== 'test') {
   connectDB().then(async () => {
     console.log('✅ MongoDB connected');
     
-    // NEW: Initialize GridFS buckets AFTER DB connection
+    // Initialize GridFS buckets AFTER DB connection
     const db = mongoose.connection.db;
     initGridFS(db);
-    console.log('✅ GridFS buckets ready (professorTemplates)');}).catch(err => {
+    console.log('✅ GridFS buckets ready (professorTemplates)');
+  }).catch(err => {
     console.error('Failed to connect DB:', err);
     process.exit(1);
   });
@@ -45,26 +63,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// In your backend server.js
-app.get('/metrics', (req, res) => {
-  res.set('Content-Type', 'text/plain');
-  
-  res.send(`
-# HELP eduresume_resumes_generated_total Total resumes generated
-# TYPE eduresume_resumes_generated_total counter
-eduresume_resumes_generated_total 42
-
-# HELP eduresume_ats_score_avg Average ATS score
-# TYPE eduresume_ats_score_avg gauge
-eduresume_ats_score_avg 82
-
-# HELP eduresume_pdf_generation_seconds PDF generation time
-# TYPE eduresume_pdf_generation_seconds histogram
-eduresume_pdf_generation_seconds_bucket{le="1"} 10
-eduresume_pdf_generation_seconds_bucket{le="2"} 35
-eduresume_pdf_generation_seconds_bucket{le="+Inf"} 42
-  `);
-});
+// ✅ REMOVE THIS - promBundle already creates /metrics
+// app.get('/metrics', ...)  // DELETE THIS ENTIRE BLOCK
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -74,6 +74,8 @@ app.use('/api/jobs', jobOpeningRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/era', decriptionRoutes);
 app.use('/api/github', githubRoutes);
+app.use('/api/hunter', hunterRoutes);
+app.use("/api/report", reportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -93,6 +95,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Metrics available at http://localhost:${PORT}/metrics`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

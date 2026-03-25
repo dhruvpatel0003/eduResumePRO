@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeftIcon } from '../components/layout/icons';
 import DocumentViewer from '../components/DocumentViewer';
-import templateService from '../services/templateService';
-import resumeService from '../services/resumeService';
+// import templateService from '../services/templateService';
 import '../styles/templates.css';
 
 const TemplatePreview = () => {
