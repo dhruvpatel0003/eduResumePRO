@@ -106,6 +106,15 @@ const authService = {
     } catch (error) {
       throw error.response?.data?.message || 'Failed to update profile';
     }
+  },
+
+  getProfessors: async () => {
+    try {
+      const response = await api.get('/auth/professors');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to fetch professors';
+    }
   }
 };
 

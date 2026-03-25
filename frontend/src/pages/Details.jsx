@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import resumeService from '../services/resumeService';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
 import TabOverview from '../components/details/TabOverview';
 import PersonalTab from '../components/details/PersonalTab';
@@ -14,18 +15,17 @@ import AddModal from '../components/details/AddModal';
 import DeleteModal from '../components/details/DeleteModal';
 import '../styles/details.css';
 
-const TAB_ORDER = [
-  'Tab Overview',
+// All possible content sections (order matters)
+const ALL_SECTIONS = [
   'Personal',
   'Education',
   'Skills',
   'Professional Experience',
   'Projects',
   'Extra Curricular Activity',
-  'Create Resume',
 ];
 
-const REPEATABLE_TABS = ['Education', 'Professional Experience', 'Projects', 'Extra Curricular Activity'];
+const REPEATABLE_SECTIONS = ['Education', 'Professional Experience', 'Projects', 'Extra Curricular Activity'];
 
 let nextId = 100;
 const genId = () => String(nextId++);
@@ -48,12 +48,33 @@ const createEntry = (tab) => {
 
 const Details = () => {
   const navigate = useNavigate();
+  const { resumeId } = useParams();
   const { user } = useAuth();
+  const [loadingResume, setLoadingResume] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Resume title + rename
+  const [resumeTitle, setResumeTitle] = useState('');
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
+
+  // Active sections — which sections the user has enabled
+  const [activeSections, setActiveSections] = useState([...ALL_SECTIONS]);
 
   const [currentTab, setCurrentTab] = useState('Tab Overview');
   const [selections, setSelections] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Compute visible tabs dynamically
+  const hasPersonal = activeSections.includes('Personal');
+  const visibleTabs = [
+    'Tab Overview',
+    ...activeSections,
+    ...(hasPersonal ? ['Create Resume'] : []),
+  ];
 
   // Form state
   const [personal, setPersonal] = useState({
@@ -107,27 +128,150 @@ const Details = () => {
     resumeLastGeneratedAt != null &&
     detailsLastUpdatedAt > resumeLastGeneratedAt;
 
+  // Load existing resume details when resumeId is present
+  useEffect(() => {
+    if (!resumeId) return;
+
+    const loadResumeDetails = async () => {
+      setLoadingResume(true);
+      setLoadError('');
+      try {
+        const data = await resumeService.getDetails(resumeId);
+        const info = data.templateInfo || {};
+
+        // Set title
+        setResumeTitle(info.title || '');
+
+        // Populate personal info
+        if (info.personalInfo) {
+          const p = info.personalInfo;
+          setPersonal({
+            firstName: p.fullName?.split(' ')[0] || '',
+            lastName: p.fullName?.split(' ').slice(1).join(' ') || '',
+            email: p.email || user?.email || '',
+            phone: p.phone || '',
+            location: p.location || '',
+            github: (p.links || []).find(l => l.includes?.('github'))?.replace(/^https?:\/\//, '') || '',
+          });
+        }
+
+        // Populate education
+        if (info.education?.length > 0) {
+          setEducationEntries(info.education.map((e, i) => ({
+            id: e._id || String(100 + i),
+            degree: e.degree || '',
+            program: e.fieldOfStudy || e.program || '',
+            location: e.institution || e.location || '',
+            cgpa: e.gpa || e.cgpa || '',
+            startDate: e.startDate || '',
+            endDate: e.endDate || '',
+          })));
+        }
+
+        // Populate skills — stored as ["Languages: JS, Python", "Tools: Git"]
+        if (info.skills?.length > 0) {
+          const skillMap = { languages: '', technologies: '', databases: '', tools: '' };
+          info.skills.forEach(s => {
+            if (typeof s === 'string') {
+              const colonIdx = s.indexOf(':');
+              if (colonIdx > -1) {
+                const cat = s.substring(0, colonIdx).trim().toLowerCase();
+                const values = s.substring(colonIdx + 1).trim();
+                if (cat.includes('language')) skillMap.languages = values;
+                else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = values;
+                else if (cat.includes('database')) skillMap.databases = values;
+                else if (cat.includes('tool')) skillMap.tools = values;
+                else if (!skillMap.technologies) skillMap.technologies = values;
+              }
+            } else if (typeof s === 'object') {
+              const cat = s.category?.toLowerCase() || '';
+              if (cat.includes('language')) skillMap.languages = s.skills?.join(', ') || '';
+              else if (cat.includes('tech') || cat.includes('framework')) skillMap.technologies = s.skills?.join(', ') || '';
+              else if (cat.includes('database')) skillMap.databases = s.skills?.join(', ') || '';
+              else if (cat.includes('tool')) skillMap.tools = s.skills?.join(', ') || '';
+              else if (!skillMap.technologies) skillMap.technologies = s.skills?.join(', ') || '';
+            }
+          });
+          setSkills(skillMap);
+        }
+
+        // Populate experience
+        if (info.experience?.length > 0) {
+          setExperienceEntries(info.experience.map((e, i) => ({
+            id: e._id || String(200 + i),
+            company: e.company || '',
+            location: e.location || '',
+            startDate: e.startDate || '',
+            endDate: e.endDate || '',
+            role: e.title || e.role || '',
+            description: e.description || (e.highlights || []).join('\n') || '',
+          })));
+        }
+
+        // Populate projects
+        if (info.projects?.length > 0) {
+          setProjectEntries(info.projects.map((p, i) => ({
+            id: p._id || String(300 + i),
+            name: p.name || p.title || '',
+            location: p.location || '',
+            startDate: p.startDate || '',
+            endDate: p.endDate || '',
+            role: p.role || '',
+            description: p.description || (p.highlights || []).join('\n') || '',
+            githubUrl: p.url || p.githubUrl || '',
+          })));
+        }
+
+        // Populate certifications as activities if present
+        if (info.certifications?.length > 0) {
+          setActivityEntries(info.certifications.map((c, i) => ({
+            id: c._id || String(400 + i),
+            name: c.name || '',
+            location: c.issuer || '',
+            startDate: c.date || '',
+            endDate: '',
+            role: '',
+            description: '',
+          })));
+        }
+      } catch (err) {
+        setLoadError(err || 'Failed to load resume details');
+      } finally {
+        setLoadingResume(false);
+      }
+    };
+
+    loadResumeDetails();
+  }, [resumeId]);
+
   // Track detail changes for stale detection
   const markDetailsUpdated = useCallback(() => {
     setDetailsLastUpdatedAt(Date.now());
   }, []);
 
-  // Tab navigation
-  const currentTabIndex = TAB_ORDER.indexOf(currentTab);
+  // Tab navigation — uses visibleTabs
+  const currentTabIndex = visibleTabs.indexOf(currentTab);
 
   const goToPrevTab = () => {
     if (currentTabIndex > 0) {
-      setCurrentTab(TAB_ORDER[currentTabIndex - 1]);
+      setCurrentTab(visibleTabs[currentTabIndex - 1]);
       setSelections({});
     }
   };
 
   const goToNextTab = () => {
-    if (currentTabIndex < TAB_ORDER.length - 1) {
-      setCurrentTab(TAB_ORDER[currentTabIndex + 1]);
+    if (currentTabIndex < visibleTabs.length - 1) {
+      setCurrentTab(visibleTabs[currentTabIndex + 1]);
       setSelections({});
     }
   };
+
+  // If current tab was removed, go back to Tab Overview
+  useEffect(() => {
+    if (!visibleTabs.includes(currentTab)) {
+      setCurrentTab('Tab Overview');
+    }
+  }, [activeSections]);
 
   // Selection helpers
   const getSelectedIds = () => selections[currentTab] || [];
@@ -156,7 +300,7 @@ const Details = () => {
   const getEntriesForTab = (tab) => {
     switch (tab) {
       case 'Tab Overview':
-        return TAB_ORDER.slice(1).map(t => ({ id: t }));
+        return activeSections.map(t => ({ id: t }));
       case 'Education': return educationEntries;
       case 'Professional Experience': return experienceEntries;
       case 'Projects': return projectEntries;
@@ -165,60 +309,169 @@ const Details = () => {
     }
   };
 
-  // Add entry
+  // Sections that have been removed and can be re-added
+  const removedSections = ALL_SECTIONS.filter(s => !activeSections.includes(s));
+
+  // --- Add logic ---
   const handleAdd = (tab) => {
-    const entry = createEntry(tab);
-    switch (tab) {
-      case 'Education':
-        setEducationEntries(prev => [...prev, entry]);
-        break;
-      case 'Professional Experience':
-        setExperienceEntries(prev => [...prev, entry]);
-        break;
-      case 'Projects':
-        setProjectEntries(prev => [...prev, entry]);
-        break;
-      case 'Extra Curricular Activity':
-        setActivityEntries(prev => [...prev, entry]);
-        break;
-      default:
-        break;
+    if (currentTab === 'Tab Overview') {
+      // Re-add a removed section
+      if (!activeSections.includes(tab)) {
+        // Insert in original order
+        const newActive = ALL_SECTIONS.filter(s => activeSections.includes(s) || s === tab);
+        setActiveSections(newActive);
+      }
+    } else {
+      // Add an entry within the current (or selected) tab
+      const entry = createEntry(tab);
+      switch (tab) {
+        case 'Education':
+          setEducationEntries(prev => [...prev, entry]);
+          break;
+        case 'Professional Experience':
+          setExperienceEntries(prev => [...prev, entry]);
+          break;
+        case 'Projects':
+          setProjectEntries(prev => [...prev, entry]);
+          break;
+        case 'Extra Curricular Activity':
+          setActivityEntries(prev => [...prev, entry]);
+          break;
+        default:
+          break;
+      }
     }
     setShowAddModal(false);
   };
 
-  // Delete selected
-  const handleDelete = () => {
+  // --- Remove logic ---
+  const handleRemove = () => {
     const ids = getSelectedIds();
     if (ids.length === 0) return;
 
-    const filterOut = (entries) => entries.filter(e => !ids.includes(e.id));
-    switch (currentTab) {
-      case 'Education':
-        setEducationEntries(filterOut);
-        break;
-      case 'Professional Experience':
-        setExperienceEntries(filterOut);
-        break;
-      case 'Projects':
-        setProjectEntries(filterOut);
-        break;
-      case 'Extra Curricular Activity':
-        setActivityEntries(filterOut);
-        break;
-      default:
-        break;
+    if (currentTab === 'Tab Overview') {
+      // Remove selected sections — but Personal is required minimum
+      const toRemove = ids.filter(id => id !== 'Personal');
+      setActiveSections(prev => prev.filter(s => !toRemove.includes(s)));
+      setSelections(prev => ({ ...prev, 'Tab Overview': [] }));
+    } else {
+      // Remove selected entries within the tab
+      const filterOut = (entries) => entries.filter(e => !ids.includes(e.id));
+      switch (currentTab) {
+        case 'Education':
+          setEducationEntries(filterOut);
+          break;
+        case 'Professional Experience':
+          setExperienceEntries(filterOut);
+          break;
+        case 'Projects':
+          setProjectEntries(filterOut);
+          break;
+        case 'Extra Curricular Activity':
+          setActivityEntries(filterOut);
+          break;
+        default:
+          break;
+      }
+      setSelections(prev => ({ ...prev, [currentTab]: [] }));
     }
-    setSelections(prev => ({ ...prev, [currentTab]: [] }));
     setShowDeleteModal(false);
     markDetailsUpdated();
   };
 
-  // Save
-  const handleSave = () => {
-    // TODO: persist to backend
-    markDetailsUpdated();
-    alert('Changes saved for ' + currentTab);
+  // --- Build templateInfo for save ---
+  const buildTemplateInfo = () => {
+    const info = {
+      title: resumeTitle,
+    };
+
+    if (activeSections.includes('Personal')) {
+      info.personalInfo = {
+        fullName: `${personal.firstName} ${personal.lastName}`.trim(),
+        email: personal.email,
+        phone: personal.phone,
+        location: personal.location,
+        links: personal.github ? [`https://${personal.github.replace(/^https?:\/\//, '')}`] : [],
+      };
+    }
+
+    if (activeSections.includes('Education')) {
+      info.education = educationEntries.map(e => ({
+        degree: e.degree,
+        fieldOfStudy: e.program,
+        institution: e.location,
+        gpa: e.cgpa,
+        startDate: e.startDate,
+        endDate: e.endDate,
+      }));
+    }
+
+    if (activeSections.includes('Skills')) {
+      const skillStrings = [];
+      if (skills.languages.trim()) skillStrings.push(`Languages: ${skills.languages.trim()}`);
+      if (skills.technologies.trim()) skillStrings.push(`Technologies: ${skills.technologies.trim()}`);
+      if (skills.databases.trim()) skillStrings.push(`Databases: ${skills.databases.trim()}`);
+      if (skills.tools.trim()) skillStrings.push(`Tools: ${skills.tools.trim()}`);
+      info.skills = skillStrings;
+    }
+
+    if (activeSections.includes('Professional Experience')) {
+      info.experience = experienceEntries.map(e => ({
+        company: e.company,
+        location: e.location,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        title: e.role,
+        description: e.description,
+      }));
+    }
+
+    if (activeSections.includes('Projects')) {
+      info.projects = projectEntries.map(p => ({
+        name: p.name,
+        location: p.location,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        role: p.role,
+        description: p.description,
+        url: p.githubUrl,
+      }));
+    }
+
+    if (activeSections.includes('Extra Curricular Activity')) {
+      info.certifications = activityEntries.map(a => ({
+        name: a.name,
+        issuer: a.location,
+        date: a.startDate,
+      }));
+    }
+
+    return info;
+  };
+
+  // --- Save ---
+  const handleSave = async () => {
+    if (!resumeId) {
+      alert('No resume ID — create a resume from a template first.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Fetch existing to preserve fields we don't manage
+      const existing = await resumeService.getDetails(resumeId);
+      const fullTemplateInfo = {
+        ...existing.templateInfo,
+        ...buildTemplateInfo(),
+        updatedAt: undefined, // let backend set this
+      };
+      await resumeService.updateDetails(resumeId, fullTemplateInfo);
+      markDetailsUpdated();
+    } catch (err) {
+      alert(err || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Update helpers (with stale tracking)
@@ -237,22 +490,43 @@ const Details = () => {
     markDetailsUpdated();
   };
 
-  // --- Create Resume handlers ---
-
-  const hasRequiredData = () => {
-    const hasPersonal = personal.firstName.trim() || personal.lastName.trim();
-    const hasContent =
-      educationEntries.some(e => e.degree || e.program) ||
-      experienceEntries.some(e => e.company || e.role) ||
-      projectEntries.some(e => e.name) ||
-      activityEntries.some(e => e.name) ||
-      skills.languages || skills.technologies;
-    return hasPersonal && hasContent;
+  // --- Rename ---
+  const openRenameModal = () => {
+    setRenameValue(resumeTitle);
+    setShowRenameModal(true);
   };
 
+  const handleRename = async () => {
+    if (!renameValue.trim()) return;
+    const newTitle = renameValue.trim();
+    setResumeTitle(newTitle);
+    setShowRenameModal(false);
+
+    // Persist if we have a resumeId
+    if (resumeId) {
+      setRenaming(true);
+      try {
+        const existing = await resumeService.getDetails(resumeId);
+        const fullTemplateInfo = { ...existing.templateInfo, title: newTitle };
+        await resumeService.updateDetails(resumeId, fullTemplateInfo);
+      } catch {
+        // Title updated locally even if backend fails
+      } finally {
+        setRenaming(false);
+      }
+    }
+  };
+
+  // --- Create Resume handlers ---
+
   const handleCreateResume = async () => {
-    if (!hasRequiredData()) {
-      setGenerationError('Complete required sections first (Personal + at least one content section).');
+    if (!resumeId) {
+      setGenerationError('No resume ID — create a resume from a template first.');
+      return;
+    }
+
+    if (!hasPersonal) {
+      setGenerationError('Personal section is required to generate a resume.');
       return;
     }
 
@@ -260,11 +534,23 @@ const Details = () => {
       setIsGeneratingResume(true);
       setGenerationError('');
 
-      // TODO: replace with real API call — resumeService.generate(templateId)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save first before generating
+      const existing = await resumeService.getDetails(resumeId);
+      const fullTemplateInfo = { ...existing.templateInfo, ...buildTemplateInfo() };
+      await resumeService.updateDetails(resumeId, fullTemplateInfo);
 
-      // Mock: set preview URL to null (placeholder will show)
-      setResumePreviewUrl(null);
+      await resumeService.generatePdf(resumeId);
+
+      // Try to load the PDF for preview
+      let previewUrl = null;
+      try {
+        const pdfBlob = await resumeService.downloadPdf(resumeId);
+        previewUrl = URL.createObjectURL(pdfBlob);
+      } catch {
+        // Preview may not be available immediately
+      }
+
+      setResumePreviewUrl(previewUrl);
       setResumeGenerated(true);
       setResumeDownloaded(false);
       setResumeLastGeneratedAt(Date.now());
@@ -275,11 +561,23 @@ const Details = () => {
     }
   };
 
-  const handleDownloadResume = () => {
-    if (!resumeGenerated) return;
-    // TODO: real download logic
-    setResumeDownloaded(true);
-    alert('Resume downloaded.');
+  const handleDownloadResume = async () => {
+    if (!resumeGenerated || !resumeId) return;
+
+    try {
+      const pdfBlob = await resumeService.downloadPdf(resumeId);
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${personal.firstName || 'resume'}_${personal.lastName || ''}.pdf`.trim();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setResumeDownloaded(true);
+    } catch (err) {
+      alert(err || 'Failed to download resume.');
+    }
   };
 
   // --- Navigation guard ---
@@ -311,7 +609,7 @@ const Details = () => {
       case 'Tab Overview':
         return (
           <TabOverview
-            tabs={TAB_ORDER.slice(1)}
+            tabs={activeSections}
             selections={selections['Tab Overview'] || []}
             onToggle={(tab) => toggleSelection('Tab Overview', tab)}
             onSelectTab={setCurrentTab}
@@ -386,14 +684,61 @@ const Details = () => {
     }
   };
 
-  const isRepeatable = REPEATABLE_TABS.includes(currentTab);
+  const isTabOverview = currentTab === 'Tab Overview';
   const isCreateResumeTab = currentTab === 'Create Resume';
+  const isContentTab = !isTabOverview && !isCreateResumeTab;
+  const isRepeatableTab = REPEATABLE_SECTIONS.includes(currentTab);
+
+  // Determine what Add modal should show
+  const getAddModalTabs = () => {
+    if (isTabOverview) {
+      // Show removed sections that can be re-added
+      return removedSections;
+    }
+    // On a content tab, show repeatable sections for adding entries
+    return isRepeatableTab ? [currentTab] : REPEATABLE_SECTIONS;
+  };
+
+  const getAddModalDefault = () => {
+    if (isTabOverview) return removedSections[0] || '';
+    return isRepeatableTab ? currentTab : REPEATABLE_SECTIONS[0];
+  };
+
+  if (loadingResume) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+        <div className="resumes-spinner" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+        {loadError}
+      </div>
+    );
+  }
 
   return (
     <div>
+      {/* Resume Title */}
+      {resumeTitle && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', marginBottom: 4 }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{resumeTitle}</h2>
+          <button
+            className="details-action-link"
+            onClick={openRenameModal}
+            style={{ fontSize: '0.85rem' }}
+          >
+            Rename
+          </button>
+        </div>
+      )}
+
       {/* Header Row */}
       <div className="details-header-row">
-        <button className="details-back-btn" onClick={() => handleNavigateAway('/dashboard')}>
+        <button className="details-back-btn" onClick={() => handleNavigateAway('/resumes')}>
           <ChevronLeftIcon /> Back
         </button>
 
@@ -404,7 +749,7 @@ const Details = () => {
             value={currentTab}
             onChange={(e) => { setCurrentTab(e.target.value); setSelections({}); }}
           >
-            {TAB_ORDER.map(tab => (
+            {visibleTabs.map(tab => (
               <option key={tab} value={tab}>{tab}</option>
             ))}
           </select>
@@ -453,7 +798,7 @@ const Details = () => {
             <button
               className="toolbar-nav-btn"
               onClick={goToNextTab}
-              disabled={currentTabIndex >= TAB_ORDER.length - 1}
+              disabled={currentTabIndex >= visibleTabs.length - 1}
               aria-label="Next tab"
             >
               <ChevronRightIcon />
@@ -463,32 +808,57 @@ const Details = () => {
       ) : (
         <div className="details-toolbar">
           <div className="details-toolbar-left">
-            <label className="toolbar-select-all">
-              <input
-                type="checkbox"
-                checked={(() => {
-                  const entries = getEntriesForTab(currentTab);
-                  const sel = getSelectedIds();
-                  return entries.length > 0 && entries.every(e => sel.includes(e.id));
-                })()}
-                onChange={selectAll}
-              />
-              Select All
-            </label>
+            {/* Select All — only on Tab Overview */}
+            {isTabOverview && (
+              <label className="toolbar-select-all">
+                <input
+                  type="checkbox"
+                  checked={(() => {
+                    const entries = getEntriesForTab(currentTab);
+                    const sel = getSelectedIds();
+                    return entries.length > 0 && entries.every(e => sel.includes(e.id));
+                  })()}
+                  onChange={selectAll}
+                />
+                Select All
+              </label>
+            )}
 
-            <button className="toolbar-action" onClick={() => setShowAddModal(true)}>
-              <span>+</span> Add
-            </button>
+            {(isTabOverview || isRepeatableTab) && (
+              <button
+                className="toolbar-action"
+                onClick={() => {
+                  if (isRepeatableTab && !isTabOverview) {
+                    handleAdd(currentTab);
+                  } else {
+                    const tabs = getAddModalTabs();
+                    if (tabs.length > 0) {
+                      setShowAddModal(true);
+                    }
+                  }
+                }}
+                disabled={isTabOverview ? removedSections.length === 0 : false}
+              >
+                <span>+</span> Add
+              </button>
+            )}
+
+            {(isTabOverview || isRepeatableTab) && (
+              <button
+                className="toolbar-action delete-action"
+                onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
+                disabled={getSelectedIds().length === 0}
+              >
+                <TrashIcon /> Remove
+              </button>
+            )}
 
             <button
-              className="toolbar-action delete-action"
-              onClick={() => getSelectedIds().length > 0 && setShowDeleteModal(true)}
+              className="toolbar-action save-action"
+              onClick={handleSave}
+              disabled={saving}
             >
-              <TrashIcon /> Delete
-            </button>
-
-            <button className="toolbar-action save-action" onClick={handleSave}>
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
 
@@ -504,7 +874,7 @@ const Details = () => {
             <button
               className="toolbar-nav-btn"
               onClick={goToNextTab}
-              disabled={currentTabIndex >= TAB_ORDER.length - 1}
+              disabled={currentTabIndex >= visibleTabs.length - 1}
               aria-label="Next tab"
             >
               <ChevronRightIcon />
@@ -516,21 +886,61 @@ const Details = () => {
       {/* Tab Content */}
       {renderTab()}
 
-      {/* Modals */}
+      {/* Add Modal */}
       {showAddModal && (
         <AddModal
-          tabs={isRepeatable ? [currentTab] : REPEATABLE_TABS}
-          defaultTab={isRepeatable ? currentTab : REPEATABLE_TABS[0]}
+          tabs={getAddModalTabs()}
+          defaultTab={getAddModalDefault()}
           onAdd={handleAdd}
           onCancel={() => setShowAddModal(false)}
         />
       )}
 
+      {/* Remove Confirmation Modal */}
       {showDeleteModal && (
         <DeleteModal
-          onConfirm={handleDelete}
+          onConfirm={handleRemove}
           onCancel={() => setShowDeleteModal(false)}
         />
+      )}
+
+      {/* Rename Modal */}
+      {showRenameModal && (
+        <div className="modal-overlay" onClick={() => setShowRenameModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">Rename Resume</div>
+            <div className="modal-body">
+              <label htmlFor="rename-input" style={{ display: 'block', marginBottom: 8 }}>
+                New name
+              </label>
+              <input
+                id="rename-input"
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); }}
+                autoFocus
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="modal-btn-cancel"
+                onClick={() => setShowRenameModal(false)}
+                disabled={renaming}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-btn-confirm"
+                onClick={handleRename}
+                disabled={!renameValue.trim() || renaming}
+              >
+                {renaming ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Leave-without-download modal */}
