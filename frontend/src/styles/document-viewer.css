@@ -148,6 +148,13 @@
   color: #d1d5db;
 }
 
+.doc-viewer-pdf {
+  display: block;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 /* ========================
    Responsive
    ======================== */
