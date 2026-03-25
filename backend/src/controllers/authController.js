@@ -1,9 +1,10 @@
-const bcrypt = require('bcryptjs');
-const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
-const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const generateToken = require("../utils/generateToken");
+const jwt = require("jsonwebtoken");
+const { userSignups, logins } = require("../metrics");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'eduresume_secret_dummy';
+const JWT_SECRET = process.env.JWT_SECRET || "eduresume_secret_dummy";
 const SALT_ROUNDS = 10;
 
 const signup = async (req, res) => {
@@ -11,12 +12,14 @@ const signup = async (req, res) => {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
     }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
@@ -24,26 +27,29 @@ const signup = async (req, res) => {
       name,
       email,
       password: hashed,
-      role: role || 'student'
+      role: role || "student",
     });
 
     await user.save();
 
     const token = generateToken(user);
+    userSignups.inc({ method: "email" });
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: "User created successfully",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error creating user', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error creating user", error: error.message });
   }
 };
 
@@ -52,34 +58,37 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+      return res
+        .status(400)
+        .json({ message: "Please provide email and password" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const token = generateToken(user);
+    logins.inc({method: "email"});
 
     res.status(200).json({
-      message: 'Login successful',
+      message: "Login successful",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error logging in', error: error.message });
+    res.status(500).json({ message: "Error logging in", error: error.message });
   }
 };
 
@@ -89,21 +98,21 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
 
     res.status(200).json({
-      message: 'Password reset token generated',
-      token: token
+      message: "Password reset token generated",
+      token: token,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error processing forgot password' });
+    res.status(500).json({ message: "Error processing forgot password" });
   }
 };
 
@@ -114,21 +123,21 @@ const verifyResetToken = async (req, res) => {
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     if (user.resetPasswordToken !== token) {
-      return res.status(400).json({ message: 'Invalid token' });
+      return res.status(400).json({ message: "Invalid token" });
     }
 
     if (user.resetPasswordExpires < Date.now()) {
-      return res.status(400).json({ message: 'Token expired' });
+      return res.status(400).json({ message: "Token expired" });
     }
 
-    res.status(200).json({ message: 'Token valid', userId: user._id });
+    res.status(200).json({ message: "Token valid", userId: user._id });
   } catch (error) {
-    console.error('Token verification failed:', error.message);
-    res.status(400).json({ message: 'Invalid or expired token' });
+    console.error("Token verification failed:", error.message);
+    res.status(400).json({ message: "Invalid or expired token" });
   }
 };
 
@@ -138,18 +147,18 @@ const resetPassword = async (req, res) => {
     const { newPassword } = req.body;
 
     if (!newPassword) {
-      return res.status(400).json({ message: 'New password is required' });
+      return res.status(400).json({ message: "New password is required" });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     if (!user.resetPasswordToken || user.resetPasswordToken !== token) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
     const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -158,33 +167,33 @@ const resetPassword = async (req, res) => {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: 'Password reset successful' });
+    res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
     console.error(error);
-    res.status(400).json({ message: 'Password reset failed' });
+    res.status(400).json({ message: "Password reset failed" });
   }
 };
 
 const updateProfile = async (req, res) => {
   try {
-    const userId = req.user.id; 
+    const userId = req.user.id;
     const { name, email, currentPassword, newPassword } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Update name if provided
-    if (name && name.trim() !== '') {
+    if (name && name.trim() !== "") {
       user.name = name.trim();
     }
 
     // Update email if provided (and not already used by someone else)
-    if (email && email.trim() !== '' && email !== user.email) {
+    if (email && email.trim() !== "" && email !== user.email) {
       const existing = await User.findOne({ email: email.trim() });
       if (existing && existing._id.toString() !== userId.toString()) {
-        return res.status(400).json({ message: 'Email is already in use' });
+        return res.status(400).json({ message: "Email is already in use" });
       }
       user.email = email.trim();
     }
@@ -192,14 +201,19 @@ const updateProfile = async (req, res) => {
     // If user wants to change password
     if (newPassword) {
       if (!currentPassword) {
-        return res
-          .status(400)
-          .json({ message: 'Current password is required to set a new password' });
+        return res.status(400).json({
+          message: "Current password is required to set a new password",
+        });
       }
 
-      const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+      const isCurrentValid = await bcrypt.compare(
+        currentPassword,
+        user.password,
+      );
       if (!isCurrentValid) {
-        return res.status(401).json({ message: 'Current password is incorrect' });
+        return res
+          .status(401)
+          .json({ message: "Current password is incorrect" });
       }
 
       const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -212,20 +226,20 @@ const updateProfile = async (req, res) => {
     const token = generateToken(user);
 
     return res.status(200).json({
-      message: 'Profile updated successfully',
+      message: "Profile updated successfully",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error("Update profile error:", error);
     return res
       .status(500)
-      .json({ message: 'Error updating profile', error: error.message });
+      .json({ message: "Error updating profile", error: error.message });
   }
 };
 
@@ -235,5 +249,5 @@ module.exports = {
   forgotPassword,
   verifyResetToken,
   resetPassword,
-  updateProfile
+  updateProfile,
 };

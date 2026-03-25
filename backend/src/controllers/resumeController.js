@@ -5,6 +5,11 @@ const { generateResumeWithPerplexity } = require("../utils/perplexityService");
 const { convertMarkdownToPDF } = require("../utils/pdfService");
 const { enhanceProjectDescriptions } = require("../utils/projectEnhancer");
 const { applyFieldPathUpdate } = require("../utils/fieldPathUpdate");
+const {
+  resumesGenerated,
+  pdfGenerationTime,
+  atsScoreGauge,
+} = require("../metrics");
 // const pdfParse = require("pdf-parse");
 // const { deriveSectionsFromPdfText } = require('../utils/sections');
 
@@ -63,12 +68,15 @@ const resumeController = {
         updatedAt: new Date(),
         title: title || `${template.name} – Resume`,
       };
+      resumesGenerated.inc({ user_id: req.user.id, template_type: "modern" }); // +1
+      const timer = pdfGenerationTime.startTimer({ template_type: "modern" });
 
       const resume = await Resume.create({
         userId: req.user.id,
         templateId: template._id,
         templateInfo: defaultTemplateInfo,
       });
+      timer();
 
       // Note: template doesn’t store sections; we return them derived.
       res.status(201).json({
