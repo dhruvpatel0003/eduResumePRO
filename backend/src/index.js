@@ -17,6 +17,8 @@ const { initGridFS } = require('./config/gridfs');
 // Prometheus metrics
 const promBundle = require('express-prom-bundle');
 const client = require('prom-client');
+const { register } = require('./metrics');
+
 
 // Load environment variables
 dotenv.config();
@@ -34,11 +36,14 @@ app.use(promBundle({
   includeMethod: true,      // Track GET/POST/etc
   includePath: true,        // Track paths
   includeStatusCode: true,  // Track 200/404/500
-  autoregister: true        // Auto-creates /metrics endpoint
+  autoregister: true,        // Auto-creates /metrics endpoint
+  collectDefaultMetrics: true,
+  requestDurationBuckets: [0.1, 0.5, 1, 2],  // HTTP latency
+  registry: register  // Use YOUR registry
 }));
 
 // ✅ Collect default metrics (CPU, memory, etc)
-client.collectDefaultMetrics();
+// client.collectDefaultMetrics();
 
 // Database connection
 if (process.env.NODE_ENV !== 'test') {
