@@ -36,31 +36,52 @@ const StudentShared = () => {
         const data = await resumeService.getMyResumes();
         const resumes = data.resumes || [];
 
-        // For each resume, load feedback to find shared entries
+        // Build shared entries from reviewers on each resume
         const entries = [];
         for (const resume of resumes) {
+          const reviewers = resume.reviewers || [];
+          if (reviewers.length === 0) continue;
+
+          // Load feedback for this resume
+          let feedbackThreads = [];
           try {
             const feedbackData = await resumeService.getFeedback(resume._id);
-            const threads = feedbackData.feedbackThreads || [];
-            threads.forEach(thread => {
-              const prof = thread.facultyId || {};
-              entries.push({
-                id: `${resume._id}-${prof._id}`,
-                resumeId: resume._id,
-                resumeTitle: resume.title || 'Resume',
-                professorId: prof._id || '',
-                professorName: prof.name || prof.email || 'Professor',
-                status: threads.some(t => (t.comments || []).some(c => c.status === 'pending')) ? 'Under Review' : 'Resolved',
-                feedback: (thread.comments || []).map((c, idx) => ({
-                  id: c._id || `fb-${idx}`,
-                  section: c.fieldPath?.toUpperCase() || 'GENERAL',
-                  message: c.text || '',
-                  accepted: c.status === 'accepted',
-                })),
-              });
-            });
+            feedbackThreads = feedbackData.feedbackThreads || [];
           } catch {
-            // Resume may have no feedback
+            // No feedback yet — still show the shared entry
+          }
+
+          for (const reviewer of reviewers) {
+            const prof = reviewer.facultyId || {};
+            const profId = prof._id || prof;
+
+            // Find feedback thread for this professor
+            const thread = feedbackThreads.find(
+              t => (t.facultyId?._id || t.facultyId) === profId
+            );
+            const comments = thread?.comments || [];
+
+            const statusMap = {
+              pending: 'Pending Review',
+              viewed: 'Under Review',
+              completed: 'Resolved',
+            };
+
+            entries.push({
+              id: `${resume._id}-${profId}`,
+              resumeId: resume._id,
+              resumeTitle: resume.title || 'Resume',
+              professorId: profId,
+              professorName: prof.name || prof.email || 'Professor',
+              status: statusMap[reviewer.status] || 'Pending Review',
+              sharedAt: reviewer.sharedAt,
+              feedback: comments.map((c, idx) => ({
+                id: c._id || `fb-${idx}`,
+                section: c.fieldPath?.toUpperCase() || 'GENERAL',
+                message: c.text || c.note || c.suggestedValue || '',
+                accepted: c.status === 'accepted',
+              })),
+            });
           }
         }
         setSharedEntries(entries);
@@ -153,13 +174,18 @@ const StudentShared = () => {
   };
 
   // Confirm update
-  const handleConfirmUpdate = () => {
-    setShowConfirmModal(false);
-    // TODO: real API call to apply updates + close feedback ticket
-    setActiveEntry(prev => prev ? { ...prev, status: 'Resolved' } : prev);
-    setSuccessBanner('Resume updated and feedback ticket closed.');
-    // Navigate to Report Update Resume flow
-    navigate('/report', { state: { fromShared: true, resumeId: activeEntry?.resumeId } });
+  const handleConfirmUpdate = async () => {
+    if (!activeEntry?.resumeId) return;
+    try {
+      await resumeService.acceptAllFeedback(activeEntry.resumeId);
+      setShowConfirmModal(false);
+      setActiveEntry(prev => prev ? { ...prev, status: 'Resolved' } : prev);
+      setSuccessBanner('Resume updated and feedback accepted.');
+      navigate('/report', { state: { fromShared: true, resumeId: activeEntry.resumeId } });
+    } catch (err) {
+      setShowConfirmModal(false);
+      setError(err || 'Failed to update resume.');
+    }
   };
 
   // Cancel update

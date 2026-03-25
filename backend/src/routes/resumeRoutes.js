@@ -21,6 +21,8 @@ router.get('/faculty/resumes', resumeController.listSharedResumesForFaculty);
 router.post('/:resumeId/feedback', resumeController.addFacultyFeedback);
 router.get('/:resumeId/feedback', resumeController.getFeedbackFromFaculty);
 router.post('/:resumeId/feedback/accept-all', resumeController.acceptAllFeedback);
+router.post('/:resumeId/submit-review', resumeController.submitFacultyReview);
+router.delete('/:resumeId/feedback/:commentId', resumeController.deleteFeedbackComment);
 router.post('/:resumeId/ai-feedback/accept-all', resumeController.acceptAIFeedback);
 
 module.exports = router;
