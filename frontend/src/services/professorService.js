@@ -68,10 +68,20 @@ const professorService = {
     }
   },
 
-  // Delete a single feedback item
-  deleteFeedback: async (feedbackId) => {
+  // Submit the professor's review (mark as completed)
+  submitReview: async (resumeId) => {
     try {
-      const response = await api.delete(`/feedback/${feedbackId}`);
+      const response = await api.post(`/resumes/${resumeId}/submit-review`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to submit review';
+    }
+  },
+
+  // Delete a single feedback comment from a resume
+  deleteFeedback: async (resumeId, commentId) => {
+    try {
+      const response = await api.delete(`/resumes/${resumeId}/feedback/${commentId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to delete feedback';

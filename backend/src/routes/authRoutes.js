@@ -9,5 +9,6 @@ router.post('/forgot-password', authController.forgotPassword);
 router.get('/reset-password-verify/:token', authController.verifyResetToken);
 router.post('/reset-password/:token', authController.resetPassword);
 router.put('/profile', authController.updateProfile);
+router.get('/professors', authController.getProfessors);
 
 module.exports = router;

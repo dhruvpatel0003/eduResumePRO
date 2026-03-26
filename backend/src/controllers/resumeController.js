@@ -111,7 +111,12 @@ const resumeController = {
         return res.status(404).json({ message: "Resume not found" });
       }
 
-      if (resume.userId.toString() !== req.user.id) {
+      // Allow the resume owner OR an assigned reviewer (professor)
+      const isOwner = resume.userId.toString() === req.user.id;
+      const isReviewer = resume.reviewers.some(
+        (r) => r.facultyId.toString() === req.user.id,
+      );
+      if (!isOwner && !isReviewer) {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
@@ -257,7 +262,13 @@ const resumeController = {
       if (!resume) {
         return res.status(404).json({ message: "Resume not found" });
       }
-      if (resume.userId.toString() !== req.user.id) {
+
+      // Allow the resume owner OR an assigned reviewer (professor)
+      const isOwner = resume.userId.toString() === req.user.id;
+      const isReviewer = resume.reviewers.some(
+        (r) => r.facultyId.toString() === req.user.id,
+      );
+      if (!isOwner && !isReviewer) {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
@@ -295,6 +306,7 @@ const resumeController = {
     try {
       const resumes = await Resume.find({ userId: req.user.id })
         .populate("templateId", "name description")
+        .populate("reviewers.facultyId", "name email")
         .sort({ updatedAt: -1 })
         .limit(10);
 
@@ -307,6 +319,12 @@ const resumeController = {
           generated: !!r.generatedPdfGridFSId,
           generatedAt: r.generatedAt,
           updatedAt: r.templateInfo.updatedAt,
+          reviewers: (r.reviewers || []).map((rv) => ({
+            facultyId: rv.facultyId,
+            status: rv.status,
+            sharedAt: rv.sharedAt,
+            completedAt: rv.completedAt,
+          })),
         })),
       });
     } catch (err) {
@@ -345,7 +363,8 @@ const resumeController = {
   },
   listSharedResumesForFaculty: async (req, res) => {
     const facultyId = req.user.id;
-    if (req.user.role.toLowerCase() !== "faculty") {
+    const role = req.user.role.toLowerCase();
+    if (role !== "faculty" && role !== "professor") {
       return res
         .status(403)
         .json({ message: "Only faculty can view shared resumes" });
@@ -373,7 +392,8 @@ const resumeController = {
     const { resumeId } = req.params;
     const { comments } = req.body;
 
-    if (req.user.role.toLowerCase() !== "faculty") {
+    const role = req.user.role.toLowerCase();
+    if (role !== "faculty" && role !== "professor") {
       return res
         .status(403)
         .json({ message: "Only faculty can add feedback to resumes" });
@@ -420,7 +440,13 @@ const resumeController = {
     );
 
     if (!resume) return res.status(404).json({ message: "Resume not found" });
-    if (resume.userId.toString() !== req.user.id) {
+
+    // Allow the resume owner (student) OR an assigned reviewer (professor)
+    const isOwner = resume.userId.toString() === req.user.id;
+    const isReviewer = resume.reviewers.some(
+      (r) => r.facultyId.toString() === req.user.id,
+    );
+    if (!isOwner && !isReviewer) {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
@@ -601,6 +627,80 @@ const resumeController = {
       return res
         .status(500)
         .json({ success: false, message: "Failed to apply feedback" });
+    }
+  },
+  submitFacultyReview: async (req, res) => {
+    try {
+      const { resumeId } = req.params;
+      const role = req.user.role.toLowerCase();
+
+      if (role !== "faculty" && role !== "professor") {
+        return res.status(403).json({ message: "Only faculty can submit reviews" });
+      }
+
+      const resume = await Resume.findById(resumeId);
+      if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+      const reviewer = resume.reviewers.find(
+        (r) => r.facultyId.toString() === req.user.id,
+      );
+      if (!reviewer) {
+        return res.status(403).json({ message: "Not a reviewer for this resume" });
+      }
+
+      reviewer.status = "completed";
+      reviewer.completedAt = new Date();
+      await resume.save();
+
+      res.json({ message: "Review submitted", resumeId: resume._id });
+    } catch (error) {
+      console.error("Submit review error:", error);
+      res.status(500).json({ message: "Failed to submit review" });
+    }
+  },
+  deleteFeedbackComment: async (req, res) => {
+    try {
+      const { resumeId, commentId } = req.params;
+      const role = req.user.role.toLowerCase();
+
+      if (role !== "faculty" && role !== "professor") {
+        return res.status(403).json({ message: "Only faculty can delete feedback" });
+      }
+
+      const resume = await Resume.findById(resumeId);
+      if (!resume) return res.status(404).json({ message: "Resume not found" });
+
+      // Verify the professor is a reviewer
+      const isReviewer = resume.reviewers.some(
+        (r) => r.facultyId.toString() === req.user.id,
+      );
+      if (!isReviewer) {
+        return res.status(403).json({ message: "Not a reviewer for this resume" });
+      }
+
+      // Find and remove the comment from feedback threads
+      let deleted = false;
+      for (const thread of resume.feedbackThreads) {
+        if (thread.facultyId.toString() !== req.user.id) continue;
+        const idx = thread.comments.findIndex(
+          (c) => c._id.toString() === commentId,
+        );
+        if (idx !== -1) {
+          thread.comments.splice(idx, 1);
+          deleted = true;
+          break;
+        }
+      }
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      await resume.save();
+      res.json({ message: "Feedback comment deleted" });
+    } catch (error) {
+      console.error("Delete feedback error:", error);
+      res.status(500).json({ message: "Failed to delete feedback" });
     }
   },
 };

@@ -181,7 +181,7 @@ const ProfessorSharedWithDetail = () => {
 
     try {
       const idsToDelete = Array.from(selectedFeedbackIds);
-      await Promise.all(idsToDelete.map(id => professorService.deleteFeedback(id)));
+      await Promise.all(idsToDelete.map(id => professorService.deleteFeedback(requestId, id)));
 
       setRequest(prev => ({
         ...prev,
@@ -217,7 +217,7 @@ const ProfessorSharedWithDetail = () => {
     setIsSubmitting(true);
 
     try {
-      // No dedicated submit route — feedback is already saved per-item
+      await professorService.submitReview(requestId);
       setShowSubmitModal(false);
       navigate('/shared');
     } catch (err) {
