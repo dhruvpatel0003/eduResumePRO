@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
+const sendEmail = require("../utils/sendEmail.js");
+const Notification = require("../models/Notification");
 const { userSignups, logins } = require("../metrics");
 
 const JWT_SECRET = process.env.JWT_SECRET || "eduresume_secret_dummy";
@@ -31,6 +33,12 @@ const signup = async (req, res) => {
     });
 
     await user.save();
+
+    await Notification.create({
+      recipient: user._id,
+      senderEmail: "admin@eduresumepro.com",
+      content: "Welcome to EduResumePRO! Please start by completing your profile."
+    });
 
     const token = generateToken(user);
     userSignups.inc({ method: "email" });
@@ -74,6 +82,13 @@ const login = async (req, res) => {
     }
 
     const token = generateToken(user);
+    
+    await Notification.create({
+      recipient: user._id,
+      senderEmail: "security@eduresumepro.com",
+      content: "New login detected on your account."
+    });
+
     logins.inc({method: "email"});
 
     res.status(200).json({
@@ -106,9 +121,19 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
 
+    const resetLink = `http://localhost:3000/reset-password/${token}`;
+
+    const emailHtml = `
+      <h2>Password Reset - EduResumePRO</h2>
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetLink}" target="_blank">${resetLink}</a>
+      <p>This link is valid for 15 minutes.</p>
+    `;
+
+    await sendEmail(user.email, "Reset your EduResumePRO password", emailHtml);
+
     res.status(200).json({
-      message: "Password reset token generated",
-      token: token,
+      message: "Password reset link sent to your email",
     });
   } catch (error) {
     console.error(error);
@@ -243,6 +268,15 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const logout = async (req, res) => {
+  try {
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error logging out" });
+  }
+};
+
 const getProfessors = async (req, res) => {
   try {
     const professors = await User.find({ role: 'professor' }).select('name email _id');
@@ -256,6 +290,7 @@ const getProfessors = async (req, res) => {
 module.exports = {
   signup,
   login,
+  logout,
   forgotPassword,
   verifyResetToken,
   resetPassword,

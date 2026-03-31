@@ -11,6 +11,7 @@ const decriptionRoutes = require('./routes/descriptionRoutes');
 const githubRoutes = require('./routes/githubRoutes');
 const hunterRoutes = require('./routes/hunterRoutes');
 const reportRoutes = require("./routes/reportRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const mongoose = require('mongoose');
 const { initGridFS } = require('./config/gridfs');
 
@@ -81,6 +82,7 @@ app.use('/api/era', decriptionRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/hunter', hunterRoutes);
 app.use("/api/report", reportRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,4 +1,6 @@
 const Feedback = require('../models/Feedback');
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 const feedbackController = {
   // Create feedback (professor)
@@ -19,6 +21,17 @@ const feedbackController = {
       });
 
       await feedback.save();
+
+      const prof = await User.findById(req.user.id);
+      if (prof) {
+        await Notification.create({
+          recipient: studentId,
+          senderEmail: prof.email,
+          content: `Professor ${prof.name || prof.email} has submitted detailed overall feedback for your resume.`,
+          link: `/details/${resumeId}`
+        });
+      }
+
       res.status(201).json(feedback);
     } catch (error) {
       res.status(500).json({ message: error.message });

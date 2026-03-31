@@ -1,58 +1,35 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import notificationService from '../services/notificationService';
 import '../styles/notifications.css';
 import '../styles/details.css';
 
-// Mock data — replace with real API calls
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 'n1',
-    senderEmail: 'prof.abc@university.edu',
-    content: 'Your resume has been reviewed. Please check feedback.',
-    status: 'unread',
-    createdAt: '2026-02-17T10:00:00Z',
-  },
-  {
-    id: 'n2',
-    senderEmail: 'prof.xyz@university.edu',
-    content: 'New comments on your shared resume document.',
-    status: 'unread',
-    createdAt: '2026-02-16T14:30:00Z',
-  },
-  {
-    id: 'n3',
-    senderEmail: 'admin@eduresumepro.com',
-    content: 'Welcome to EduResumePRO! Start by creating your profile.',
-    status: 'read',
-    createdAt: '2026-02-15T09:00:00Z',
-  },
-  {
-    id: 'n4',
-    senderEmail: 'prof.abc@university.edu',
-    content: 'Feedback ticket has been closed for your resume.',
-    status: 'read',
-    createdAt: '2026-02-14T16:45:00Z',
-  },
-];
-
 const Notifications = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [error, setError] = useState('');
 
   // Fetch notifications
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const data = await notificationService.getNotifications();
+      const formattedData = data.map(n => ({
+        ...n,
+        id: n._id || n.id
+      }));
+      setNotifications(formattedData);
+    } catch (err) {
+      setError(err || 'Failed to fetch notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        // TODO: replace with real API call
-        await new Promise(resolve => setTimeout(resolve, 400));
-        setNotifications(MOCK_NOTIFICATIONS);
-      } catch (err) {
-        // Error handling
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchNotifications();
   }, []);
 
@@ -66,10 +43,6 @@ const Notifications = () => {
     } else {
       const allIds = new Set(notifications.map(n => n.id));
       setSelectedIds(allIds);
-      // Mark all as read
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, status: 'read' }))
-      );
     }
   };
 
@@ -87,12 +60,18 @@ const Notifications = () => {
   };
 
   // Mark as read
-  const handleMarkAsRead = () => {
+  const handleMarkAsRead = async () => {
     if (noneSelected) return;
-    // TODO: replace with real API call
-    setNotifications(prev =>
-      prev.map(n => selectedIds.has(n.id) ? { ...n, status: 'read' } : n)
-    );
+    try {
+      const idsArray = Array.from(selectedIds);
+      await notificationService.markAsRead(idsArray);
+      setNotifications(prev =>
+        prev.map(n => selectedIds.has(n.id) ? { ...n, status: 'read' } : n)
+      );
+      setSelectedIds(new Set());
+    } catch (err) {
+      setError(err || 'Failed to mark as read');
+    }
   };
 
   // Delete — open confirmation modal
@@ -102,11 +81,16 @@ const Notifications = () => {
   };
 
   // Confirm delete
-  const handleConfirmDelete = () => {
-    // TODO: replace with real API call
-    setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)));
-    setSelectedIds(new Set());
-    setShowDeleteModal(false);
+  const handleConfirmDelete = async () => {
+    try {
+      const idsArray = Array.from(selectedIds);
+      await notificationService.deleteNotifications(idsArray);
+      setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)));
+      setSelectedIds(new Set());
+      setShowDeleteModal(false);
+    } catch (err) {
+      setError(err || 'Failed to delete notifications');
+    }
   };
 
   // Cancel delete
@@ -126,6 +110,8 @@ const Notifications = () => {
 
   return (
     <div>
+      {error && <div className="error-message" style={{ color: 'red', margin: '10px 20px' }}>{error}</div>}
+      
       {/* Toolbar Row */}
       <div className="notifications-toolbar">
         <div className="notifications-toolbar-left">
@@ -163,12 +149,10 @@ const Notifications = () => {
           <div className="notifications-spinner" />
         </div>
       ) : notifications.length === 0 ? (
-        /* Empty State */
         <div className="notifications-empty">
           No notifications
         </div>
       ) : (
-        /* Notification List */
         <div className="notifications-list">
           {notifications.map(notification => (
             <div
@@ -188,7 +172,29 @@ const Notifications = () => {
                 aria-label={`Select notification from ${notification.senderEmail}`}
               />
               <span className="notification-sender">{notification.senderEmail}</span>
-              <span className="notification-content">{notification.content}</span>
+              <span className="notification-content">
+                {notification.content}
+                {notification.link && (
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      navigate(notification.link);
+                    }} 
+                    style={{
+                      marginLeft: '15px', 
+                      padding: '4px 10px', 
+                      background: '#eff6ff', 
+                      color: '#2563eb', 
+                      border: '1px solid #bfdbfe', 
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    View Details
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
