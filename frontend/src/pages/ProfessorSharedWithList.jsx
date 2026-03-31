@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon, ShareIcon } from '../components/layout/icons';
+import professorService from '../services/professorService';
 import '../styles/professor-shared.css';
 import '../styles/dashboard.css';
 
@@ -15,32 +16,24 @@ const TIME_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'not_started', label: 'Not Started' },
   { value: 'pending', label: 'Pending' },
-  { value: 'started', label: 'Started' },
+  { value: 'viewed', label: 'Viewed' },
   { value: 'completed', label: 'Completed' },
   { value: 'all', label: 'All' },
 ];
 
 const PAGE_SIZE = 4;
 
-// Mock data — replace with real API calls
-const MOCK_REQUESTS = [
-  { id: 'sw1', studentName: 'ABC Student', level: 'Graduate', stream: 'Computer Engineering', requestedDate: '02/11/2026', status: 'Not Started' },
-  { id: 'sw2', studentName: 'DEF Student', level: 'Undergraduate', stream: 'Electrical Engineering', requestedDate: '02/11/2026', status: 'Not Started' },
-  { id: 'sw3', studentName: 'GHI Student', level: 'Graduate', stream: 'Computer Science', requestedDate: '02/10/2026', status: 'Pending' },
-  { id: 'sw4', studentName: 'JKL Student', level: 'Graduate', stream: 'Computer Engineering', requestedDate: '02/09/2026', status: 'Not Started' },
-  { id: 'sw5', studentName: 'MNO Student', level: 'Undergraduate', stream: 'Mechanical Engineering', requestedDate: '02/08/2026', status: 'Started' },
-  { id: 'sw6', studentName: 'PQR Student', level: 'Graduate', stream: 'Business Administration', requestedDate: '02/07/2026', status: 'Not Started' },
-  { id: 'sw7', studentName: 'STU Student', level: 'Graduate', stream: 'Computer Engineering', requestedDate: '02/06/2026', status: 'Pending' },
-  { id: 'sw8', studentName: 'VWX Student', level: 'Undergraduate', stream: 'Biology', requestedDate: '02/05/2026', status: 'Not Started' },
-];
+const statusDisplayMap = {
+  pending: 'Pending',
+  viewed: 'Viewed',
+  completed: 'Completed',
+};
 
 const getStatusClass = (status) => {
   switch (status) {
-    case 'Not Started': return 'not-started';
     case 'Pending': return 'pending';
-    case 'Started': return 'started';
+    case 'Viewed': return 'started';
     case 'Completed': return 'completed';
     default: return '';
   }
@@ -52,7 +45,7 @@ const ProfessorSharedWithList = () => {
   // Filter state (applied immediately on change)
   const [sharedWith, setSharedWith] = useState('me');
   const [timeFilter, setTimeFilter] = useState('most_recent');
-  const [statusFilter, setStatusFilter] = useState('not_started');
+  const [statusFilter, setStatusFilter] = useState('pending');
 
   // Data state
   const [requests, setRequests] = useState([]);
@@ -70,19 +63,31 @@ const ProfessorSharedWithList = () => {
     setError('');
 
     try {
-      // TODO: replace with real API call — GET /professor/shared-with?status=&time=&sharedWith=me&page=&pageSize=
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const data = await professorService.getRequests();
+      const all = (data.resumes || []).map(r => ({
+        id: r.resumeId,
+        studentName: r.student?.name || 'Student',
+        studentEmail: r.student?.email || '',
+        level: '—',
+        stream: r.title || '—',
+        requestedDate: r.sharedAt
+          ? new Date(r.sharedAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : '',
+        status: statusDisplayMap[r.status] || 'Pending',
+        rawStatus: r.status || 'pending',
+      }));
 
-      // Mock filtering
-      let filtered = [...MOCK_REQUESTS];
+      // Filter by status
+      let filtered = [...all];
       if (filters.status !== 'all') {
-        const statusMap = {
-          not_started: 'Not Started',
-          pending: 'Pending',
-          started: 'Started',
-          completed: 'Completed',
-        };
-        filtered = filtered.filter(r => r.status === statusMap[filters.status]);
+        filtered = filtered.filter(r => r.rawStatus === filters.status);
+      }
+
+      // Sort by time
+      if (filters.time === 'oldest') {
+        filtered.sort((a, b) => new Date(a.requestedDate) - new Date(b.requestedDate));
+      } else {
+        filtered.sort((a, b) => new Date(b.requestedDate) - new Date(a.requestedDate));
       }
 
       const start = (page - 1) * PAGE_SIZE;
@@ -130,7 +135,7 @@ const ProfessorSharedWithList = () => {
   const handleReset = () => {
     setSharedWith('me');
     setTimeFilter('most_recent');
-    setStatusFilter('not_started');
+    setStatusFilter('pending');
     setCurrentPage(1);
   };
 

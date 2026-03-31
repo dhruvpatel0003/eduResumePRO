@@ -2,18 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeftIcon } from '../components/layout/icons';
 import DocumentViewer from '../components/DocumentViewer';
-// import templateService from '../services/templateService';
+import templateService from '../services/templateService';
+import resumeService from '../services/resumeService';
 import '../styles/templates.css';
-
-// Mock template detail — replace with real API data
-const MOCK_TEMPLATE_DETAILS = {
-  t1: { _id: 't1', name: 'Graduate Student - CSE', previewUrl: null, numPages: 1 },
-  t2: { _id: 't2', name: 'Undergraduate - CSE', previewUrl: null, numPages: 1 },
-  t3: { _id: 't3', name: 'Engineering General', previewUrl: null, numPages: 1 },
-  t4: { _id: 't4', name: 'Business Professional', previewUrl: null, numPages: 1 },
-  t5: { _id: 't5', name: 'Research Assistant - Bio', previewUrl: null, numPages: 1 },
-  t6: { _id: 't6', name: 'Mechanical Design Resume', previewUrl: null, numPages: 1 },
-};
 
 const TemplatePreview = () => {
   const { id } = useParams();
@@ -33,19 +24,31 @@ const TemplatePreview = () => {
         setLoading(true);
         setError('');
 
-        // TODO: replace with real API call — templateService.getById(id)
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const data = MOCK_TEMPLATE_DETAILS[id];
-        if (!data) throw 'Template not found';
-        setTemplate(data);
+        // Get template info from the list
+        const allTemplates = await templateService.getAll();
+        const list = Array.isArray(allTemplates) ? allTemplates : allTemplates.templates || [];
+        const found = list.find(t => t._id === id);
+        if (!found) throw new Error('Template not found');
+
+        // Get PDF as blob URL for preview
+        let previewUrl = null;
+        try {
+          const pdfBlob = await templateService.getTemplatePdf(id);
+          previewUrl = URL.createObjectURL(pdfBlob);
+        } catch {
+          // PDF preview may not be available — that's ok
+        }
+
+        setTemplate({ ...found, previewUrl });
       } catch (err) {
-        setError(err || 'Failed to load template');
+        setError(err?.message || err || 'Failed to load template');
       } finally {
         setLoading(false);
       }
     };
 
     fetchTemplate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleBack = () => {
@@ -59,14 +62,13 @@ const TemplatePreview = () => {
       setApplyError('');
       setShowSuccess(false);
 
-      // TODO: replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 600));
-      // await templateService.applyTemplate(id);
+      const data = await resumeService.createFromTemplate(id, template?.name || 'My Resume');
 
       setShowSuccess(true);
 
+      const resumeId = data.resume?._id || data.resume?.id;
       setTimeout(() => {
-        navigate('/resumes');
+        navigate(resumeId ? `/details/${resumeId}` : '/resumes');
       }, 1500);
     } catch (err) {
       setApplyError(err || 'Could not apply template. Please try again.');

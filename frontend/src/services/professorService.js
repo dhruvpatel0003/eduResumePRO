@@ -22,70 +22,76 @@ api.interceptors.request.use(
 );
 
 const professorService = {
-  // Requests list
-  getRequests: async (params) => {
+  // Get resumes shared with this faculty member
+  getRequests: async () => {
     try {
-      const response = await api.get('/professor/requests', { params });
+      const response = await api.get('/resumes/faculty/resumes');
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to fetch requests';
     }
   },
 
-  // Single request detail
-  getRequestById: async (requestId) => {
+  // Get resume details + feedback for a single resume
+  getRequestById: async (resumeId) => {
     try {
-      const response = await api.get(`/professor/requests/${requestId}`);
-      return response.data;
+      const [detailsRes, feedbackRes] = await Promise.all([
+        api.get(`/resumes/${resumeId}/details`),
+        api.get(`/resumes/${resumeId}/feedback`),
+      ]);
+      return {
+        details: detailsRes.data,
+        feedback: feedbackRes.data,
+      };
     } catch (error) {
       throw error.response?.data?.message || 'Failed to fetch request details';
     }
   },
 
-  // Create feedback
-  createFeedback: async (requestId, feedbackData) => {
+  // Create feedback on a resume
+  createFeedback: async (resumeId, comments) => {
     try {
-      const response = await api.post(`/professor/requests/${requestId}/feedback`, feedbackData);
+      const response = await api.post(`/resumes/${resumeId}/feedback`, { comments });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to create feedback';
     }
   },
 
-  // Update feedback
-  updateFeedback: async (requestId, feedbackId, feedbackData) => {
+  // Update a single feedback item
+  updateFeedback: async (feedbackId, feedbackData) => {
     try {
-      const response = await api.patch(`/professor/requests/${requestId}/feedback/${feedbackId}`, feedbackData);
+      const response = await api.put(`/feedback/${feedbackId}`, feedbackData);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to update feedback';
     }
   },
 
-  // Delete feedback (bulk)
-  deleteFeedback: async (requestId, feedbackIds) => {
+  // Submit the professor's review (mark as completed)
+  submitReview: async (resumeId) => {
     try {
-      const response = await api.post(`/professor/requests/${requestId}/feedback/delete`, { ids: feedbackIds });
+      const response = await api.post(`/resumes/${resumeId}/submit-review`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to submit review';
+    }
+  },
+
+  // Delete a single feedback comment from a resume
+  deleteFeedback: async (resumeId, commentId) => {
+    try {
+      const response = await api.delete(`/resumes/${resumeId}/feedback/${commentId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to delete feedback';
     }
   },
 
-  // Submit feedback to student
-  submitFeedback: async (requestId) => {
-    try {
-      const response = await api.post(`/professor/requests/${requestId}/submit`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to submit feedback';
-    }
-  },
-
   // Template management
-  getTemplates: async (scope) => {
+  getTemplates: async () => {
     try {
-      const response = await api.get('/templates', { params: { scope } });
+      const response = await api.get('/templates');
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to fetch templates';
@@ -94,7 +100,7 @@ const professorService = {
 
   uploadTemplate: async (formData) => {
     try {
-      const response = await api.post('/templates/upload', formData, {
+      const response = await api.post('/templates', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return response.data;
@@ -103,12 +109,12 @@ const professorService = {
     }
   },
 
-  deleteTemplates: async (ids) => {
+  deleteTemplate: async (id) => {
     try {
-      const response = await api.post('/templates/delete', { ids });
+      const response = await api.delete(`/templates/${id}`);
       return response.data;
     } catch (error) {
-      throw error.response?.data?.message || 'Failed to delete templates';
+      throw error.response?.data?.message || 'Failed to delete template';
     }
   },
 };

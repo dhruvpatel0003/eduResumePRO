@@ -136,14 +136,14 @@ const Report = () => {
   };
 
   // Navigation guard
-  // const handleNavigateAway = useCallback((path) => {
-  //   if (hasUpdated && !reportDownloaded) {
-  //     setPendingNavigation(path);
-  //     setShowLeaveModal(true);
-  //   } else {
-  //     navigate(path);
-  //   }
-  // }, [hasUpdated, reportDownloaded, navigate]);
+  const handleNavigateAway = useCallback((path) => {
+    if (hasUpdated && !reportDownloaded) {
+      setPendingNavigation(path);
+      setShowLeaveModal(true);
+    } else {
+      navigate(path);
+    }
+  }, [hasUpdated, reportDownloaded, navigate]);
 
   // Intercept browser back/sidebar navigation via location changes
   useEffect(() => {

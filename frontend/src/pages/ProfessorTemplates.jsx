@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DeleteModal from '../components/details/DeleteModal';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
+import templateService from '../services/templateService';
+import { useAuth } from '../context/AuthContext';
 import '../styles/professor-templates.css';
 import '../styles/details.css';
 
@@ -15,18 +17,9 @@ const DEFAULT_SCOPE = 'uploaded';
 // Accepted file types
 const ACCEPTED_TYPES = '.pdf,.docx,.json';
 
-// Mock data — replace with real API calls
-const MOCK_UPLOADED_TEMPLATES = [
-  { _id: 'pt1', name: 'Graduate Student - CSE', thumbnail: null, uploadedBy: 'me' },
-];
-
-const MOCK_ALL_TEMPLATES = [
-  { _id: 'pt1', name: 'Graduate Student - CSE', thumbnail: null, uploadedBy: 'me' },
-  { _id: 'pt2', name: 'Undergraduate - CSE', thumbnail: null, uploadedBy: 'other' },
-  { _id: 'pt3', name: 'Engineering General', thumbnail: null, uploadedBy: 'other' },
-];
-
 const ProfessorTemplates = () => {
+  const { user } = useAuth();
+
   // Filter state
   const [selectedScope, setSelectedScope] = useState(DEFAULT_SCOPE);
   const [appliedScope, setAppliedScope] = useState(DEFAULT_SCOPE);
@@ -52,10 +45,12 @@ const ProfessorTemplates = () => {
     setError('');
 
     try {
-      // TODO: replace with real API call — GET /templates?scope=uploaded|all
-      await new Promise(resolve => setTimeout(resolve, 400));
-      const data = scope === 'all' ? MOCK_ALL_TEMPLATES : MOCK_UPLOADED_TEMPLATES;
-      setTemplates(data);
+      const data = await templateService.getAll();
+      const list = Array.isArray(data) ? data : data.templates || [];
+      const filtered = scope === 'uploaded'
+        ? list.filter(t => t.professorId === user?._id || t.professorId === user?.id)
+        : list;
+      setTemplates(filtered);
       setSelectedIds(new Set());
     } catch (err) {
       setError('Failed to fetch templates.');
@@ -110,8 +105,9 @@ const ProfessorTemplates = () => {
 
   const handleConfirmDelete = async () => {
     try {
-      // TODO: replace with real API call — DELETE /templates (bulk)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delete each selected template individually
+      const idsToDelete = Array.from(selectedIds);
+      await Promise.all(idsToDelete.map(id => templateService.delete(id)));
       setTemplates(prev => prev.filter(t => !selectedIds.has(t._id)));
       setSelectedIds(new Set());
       setShowDeleteModal(false);
@@ -148,22 +144,19 @@ const ProfessorTemplates = () => {
     setUploadError('');
 
     try {
-      // TODO: replace with real API call — POST /templates/upload
-      await new Promise(resolve => setTimeout(resolve, 600));
+      const formData = new FormData();
+      formData.append('pdf', uploadFile);
+      formData.append('name', uploadFile.name.replace(/\.[^/.]+$/, ''));
 
-      // Mock: add to list
-      const newTemplate = {
-        _id: `pt-${Date.now()}`,
-        name: uploadFile.name.replace(/\.[^/.]+$/, ''),
-        thumbnail: null,
-        uploadedBy: 'me',
-      };
-      setTemplates(prev => [...prev, newTemplate]);
+      const data = await templateService.create(formData);
+
+      // Refresh templates list
       setShowUploadModal(false);
       setSuccessBanner('Template uploaded successfully.');
       setTimeout(() => setSuccessBanner(''), 4000);
+      fetchTemplates(appliedScope);
     } catch (err) {
-      setUploadError('Failed to upload template. Try again.');
+      setUploadError(err || 'Failed to upload template. Try again.');
     } finally {
       setUploading(false);
     }
