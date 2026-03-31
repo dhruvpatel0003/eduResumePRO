@@ -5,6 +5,8 @@ const { generateResumeWithPerplexity } = require("../utils/perplexityService");
 const { convertMarkdownToPDF } = require("../utils/pdfService");
 const { enhanceProjectDescriptions } = require("../utils/projectEnhancer");
 const { applyFieldPathUpdate } = require("../utils/fieldPathUpdate");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 const {
   resumesGenerated,
   pdfGenerationTime,
@@ -357,6 +359,16 @@ const resumeController = {
         sharedAt: new Date(),
       });
       await resume.save();
+
+      const student = await User.findById(req.user.id);
+      if (student) {
+        await Notification.create({
+          recipient: facultyId,
+          senderEmail: student.email,
+          content: `${student.name || student.email} has shared a resume with you for review.`,
+          link: `/shared-with/${resume._id}`
+        });
+      }
     }
 
     res.json({ message: "Resume shared with faculty", resumeId: resume._id });
@@ -428,6 +440,16 @@ const resumeController = {
     });
 
     await resume.save();
+
+    const prof = await User.findById(req.user.id);
+    if (prof) {
+      await Notification.create({
+        recipient: resume.userId,
+        senderEmail: prof.email,
+        content: `Professor ${prof.name || prof.email} has added inline feedback comments to your resume.`,
+        link: `/details/${resume._id}`
+      });
+    }
 
     res.json({ message: "Feedback submitted", resumeId: resume._id });
   },
@@ -651,6 +673,16 @@ const resumeController = {
       reviewer.status = "completed";
       reviewer.completedAt = new Date();
       await resume.save();
+
+      const prof = await User.findById(req.user.id);
+      if (prof) {
+        await Notification.create({
+          recipient: resume.userId,
+          senderEmail: prof.email,
+          content: `Professor ${prof.name || prof.email} has completed their review of your resume.`,
+          link: `/details/${resume._id}`
+        });
+      }
 
       res.json({ message: "Review submitted", resumeId: resume._id });
     } catch (error) {

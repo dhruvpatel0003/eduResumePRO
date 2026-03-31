@@ -3,6 +3,7 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail.js");
+const Notification = require("../models/Notification");
 const { userSignups, logins } = require("../metrics");
 
 const JWT_SECRET = process.env.JWT_SECRET || "eduresume_secret_dummy";
@@ -32,6 +33,12 @@ const signup = async (req, res) => {
     });
 
     await user.save();
+
+    await Notification.create({
+      recipient: user._id,
+      senderEmail: "admin@eduresumepro.com",
+      content: "Welcome to EduResumePRO! Please start by completing your profile."
+    });
 
     const token = generateToken(user);
     userSignups.inc({ method: "email" });
@@ -75,6 +82,13 @@ const login = async (req, res) => {
     }
 
     const token = generateToken(user);
+    
+    await Notification.create({
+      recipient: user._id,
+      senderEmail: "security@eduresumepro.com",
+      content: "New login detected on your account."
+    });
+
     logins.inc({method: "email"});
 
     res.status(200).json({
