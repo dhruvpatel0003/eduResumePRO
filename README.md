@@ -262,7 +262,7 @@ open http://localhost:3000
 ---
 
 ## 📝 Development Workflow
-
+   
 ### Start Development
 ```bash
 # All services in one command
