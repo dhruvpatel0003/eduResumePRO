@@ -280,12 +280,21 @@ cd frontend && npm start   # Terminal 2
 
 ### Test Changes
 ```bash
-# Backend tests
+# Backend tests (automatically generates HTML coverage)
 cd backend && npm test
 
-# Or run all tests
-npm test
+# Frontend tests
+cd frontend && npm test -- --watchAll=false
 ```
+
+#### Viewing Test Coverage (HTML Format)
+Since testing is executed via Jest with `collectCoverage` enabled:
+1. Run the tests in the specific directory (e.g., `cd backend && npm test`).
+2. Jest will automatically create a `coverage/lcov-report/index.html` file.
+3. Open the HTML file in your browser to view a visually formatted, detailed breakdown of code coverage!
+   - **Windows:** `start coverage/lcov-report/index.html`
+   - **Mac:** `open coverage/lcov-report/index.html`
+   - **Linux:** `xdg-open coverage/lcov-report/index.html`
 
 ### Commit Code
 ```bash
