@@ -5,6 +5,9 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
+# Accept API URL as build argument
+ARG REACT_APP_API_URL=http://backend:5000/api
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
@@ -15,8 +18,8 @@ RUN npm config set registry https://registry.npmjs.org/ && \
 # Copy source
 COPY . .
 
-# Build with max memory
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
+# Build with max memory and API URL
+RUN NODE_OPTIONS="--max-old-space-size=4096" REACT_APP_API_URL=$REACT_APP_API_URL npm run build
 
 # Production stage
 FROM node:18-alpine
