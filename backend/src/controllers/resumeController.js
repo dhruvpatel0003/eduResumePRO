@@ -11,6 +11,9 @@ const {
   resumesGenerated,
   pdfGenerationTime,
   atsScoreGauge,
+  resumeDownloads,
+  resumesShared,
+  feedbackSubmitted,
 } = require("../metrics");
 // const pdfParse = require("pdf-parse");
 // const { deriveSectionsFromPdfText } = require('../utils/sections');
@@ -283,6 +286,8 @@ const resumeController = {
       const { downloadFromGridFS } = require("../config/gridfs");
       const stream = downloadFromGridFS(resume.generatedPdfGridFSId.toString());
 
+      resumeDownloads.inc(); // Track resume download/view
+
       res.set({
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${resume.templateInfo.personalInfo.fullName || "resume"}.pdf"`,
@@ -371,6 +376,8 @@ const resumeController = {
       }
     }
 
+    resumesShared.inc(); // Track resume share
+
     res.json({ message: "Resume shared with faculty", resumeId: resume._id });
   },
   listSharedResumesForFaculty: async (req, res) => {
@@ -442,17 +449,19 @@ const resumeController = {
     await resume.save();
 
     const prof = await User.findById(req.user.id);
-    if (prof) {
-      await Notification.create({
-        recipient: resume.userId,
-        senderEmail: prof.email,
-        content: `Professor ${prof.name || prof.email} has added inline feedback comments to your resume.`,
-        link: `/details/${resume._id}`
-      });
-    }
+      if (prof) {
+        await Notification.create({
+          recipient: resume.userId,
+          senderEmail: prof.email,
+          content: `Professor ${prof.name || prof.email} has added inline feedback comments to your resume.`,
+          link: `/details/${resume._id}`
+        });
+      }
 
-    res.json({ message: "Feedback submitted", resumeId: resume._id });
-  },
+      feedbackSubmitted.inc(); // Track feedback submission
+
+      res.json({ message: "Feedback submitted", resumeId: resume._id });
+    },
   getFeedbackFromFaculty: async (req, res) => {
     const { resumeId } = req.params;
 
