@@ -1,6 +1,15 @@
 # Use official Node.js runtime as base image
 FROM node:18-alpine
 
+# Install Chromium and dependencies for Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-dejavu
+
 # Set working directory
 WORKDIR /app
 
@@ -12,6 +21,10 @@ RUN npm install --production=false
 
 # Copy application code
 COPY . .
+
+# Set Puppeteer to use system Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Create non-root user FIRST
 RUN addgroup -g 1001 -S nodejs && \
