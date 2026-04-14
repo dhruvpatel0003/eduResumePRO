@@ -169,6 +169,27 @@ const resumeController = {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
+      // Validate and transform personalInfo.links to correct format
+      if (templateInfo.personalInfo?.links) {
+        templateInfo.personalInfo.links = templateInfo.personalInfo.links.map(link => {
+          // If link is a string, treat it as a URL (likely from old data)
+          if (typeof link === 'string') {
+            return {
+              platform: 'Portfolio',
+              url: link
+            };
+          }
+          // If it's an object, ensure it has required fields
+          if (typeof link === 'object' && link !== null) {
+            return {
+              platform: link.platform || 'Other',
+              url: link.url || link.platform || ''
+            };
+          }
+          return link;
+        }).filter(link => link.url); // Remove links without URLs
+      }
+
       resume.templateInfo = {
         ...resume.templateInfo,
         ...templateInfo,
