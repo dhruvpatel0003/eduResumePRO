@@ -11,6 +11,9 @@ const {
   resumesGenerated,
   pdfGenerationTime,
   atsScoreGauge,
+  resumeDownloads,
+  resumesShared,
+  feedbackSubmitted,
 } = require("../metrics");
 // const pdfParse = require("pdf-parse");
 // const { deriveSectionsFromPdfText } = require('../utils/sections');
@@ -166,6 +169,27 @@ const resumeController = {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
+      // Validate and transform personalInfo.links to correct format
+      if (templateInfo.personalInfo?.links) {
+        templateInfo.personalInfo.links = templateInfo.personalInfo.links.map(link => {
+          // If link is a string, treat it as a URL (likely from old data)
+          if (typeof link === 'string') {
+            return {
+              platform: 'Portfolio',
+              url: link
+            };
+          }
+          // If it's an object, ensure it has required fields
+          if (typeof link === 'object' && link !== null) {
+            return {
+              platform: link.platform || 'Other',
+              url: link.url || link.platform || ''
+            };
+          }
+          return link;
+        }).filter(link => link.url); // Remove links without URLs
+      }
+
       resume.templateInfo = {
         ...resume.templateInfo,
         ...templateInfo,
@@ -283,6 +307,8 @@ const resumeController = {
       const { downloadFromGridFS } = require("../config/gridfs");
       const stream = downloadFromGridFS(resume.generatedPdfGridFSId.toString());
 
+      resumeDownloads.inc(); // Track resume download/view
+
       res.set({
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${resume.templateInfo.personalInfo.fullName || "resume"}.pdf"`,
@@ -371,6 +397,8 @@ const resumeController = {
       }
     }
 
+    resumesShared.inc(); // Track resume share
+
     res.json({ message: "Resume shared with faculty", resumeId: resume._id });
   },
   listSharedResumesForFaculty: async (req, res) => {
@@ -442,17 +470,19 @@ const resumeController = {
     await resume.save();
 
     const prof = await User.findById(req.user.id);
-    if (prof) {
-      await Notification.create({
-        recipient: resume.userId,
-        senderEmail: prof.email,
-        content: `Professor ${prof.name || prof.email} has added inline feedback comments to your resume.`,
-        link: `/details/${resume._id}`
-      });
-    }
+      if (prof) {
+        await Notification.create({
+          recipient: resume.userId,
+          senderEmail: prof.email,
+          content: `Professor ${prof.name || prof.email} has added inline feedback comments to your resume.`,
+          link: `/details/${resume._id}`
+        });
+      }
 
-    res.json({ message: "Feedback submitted", resumeId: resume._id });
-  },
+      feedbackSubmitted.inc(); // Track feedback submission
+
+      res.json({ message: "Feedback submitted", resumeId: resume._id });
+    },
   getFeedbackFromFaculty: async (req, res) => {
     const { resumeId } = req.params;
 

@@ -4,6 +4,7 @@ const {
   extractResumeText,
   analyzeJobMatch,
 } = require("../utils/hunterService");
+const { jobsAnalyzed } = require("../metrics");
 
 class HunterController {
   static async getDynamicCompanies(req, res) {
@@ -152,6 +153,8 @@ class HunterController {
               analyzedJobs.length,
           )
         : 0;
+
+      jobsAnalyzed.inc(analyzedJobs.length); // Track number of jobs analyzed
 
       return res.json({
         success: true,

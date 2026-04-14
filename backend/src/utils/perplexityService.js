@@ -62,8 +62,8 @@ Generate a professional resume in **Markdown format with tables** based on the f
 - Email: ${personalInfo.email}
 - Phone: ${personalInfo.phone}
 - Location: ${personalInfo.location}
-- LinkedIn: ${personalInfo.linkedin || personalInfo.links?.find((l) => l.includes("linkedin")) || "N/A"}
-- GitHub: ${personalInfo.github || personalInfo.links?.find((l) => l.includes("github")) || "N/A"}
+- LinkedIn: ${personalInfo.linkedin || personalInfo.links?.find((l) => l.platform?.toLowerCase() === "linkedin")?.url || "N/A"}
+- GitHub: ${personalInfo.github || personalInfo.links?.find((l) => l.platform?.toLowerCase() === "github")?.url || "N/A"}
 - Summary: ${personalInfo.summary || "Motivated software engineer"}
 
 ## EDUCATION

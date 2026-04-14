@@ -31,6 +31,26 @@ const logins = new client.Counter({
   labelNames: ['method']
 });
 
+const resumeDownloads = new client.Counter({
+  name: 'eduresume_resume_downloads_total',
+  help: 'Total number of resume downloads'
+});
+
+const jobsAnalyzed = new client.Counter({
+  name: 'eduresume_jobs_analyzed_total',
+  help: 'Total number of jobs analyzed via Hunter'
+});
+
+const resumesShared = new client.Counter({
+  name: 'eduresume_resumes_shared_total',
+  help: 'Total number of resumes shared with faculty'
+});
+
+const feedbackSubmitted = new client.Counter({
+  name: 'eduresume_feedback_submitted_total',
+  help: 'Total number of faculty feedback submitted'
+});
+
 // Histograms (latencies)
 const pdfGenerationTime = new client.Histogram({
   name: 'eduresume_pdf_generation_seconds',
@@ -48,6 +68,10 @@ const atsScoreGauge = new client.Gauge({
 register.registerMetric(resumesGenerated);
 register.registerMetric(userSignups);
 register.registerMetric(logins);
+register.registerMetric(resumeDownloads);
+register.registerMetric(jobsAnalyzed);
+register.registerMetric(resumesShared);
+register.registerMetric(feedbackSubmitted);
 register.registerMetric(pdfGenerationTime);
 register.registerMetric(atsScoreGauge);
 
@@ -55,6 +79,10 @@ module.exports = {
   resumesGenerated,
   userSignups,
   logins,
+  resumeDownloads,
+  jobsAnalyzed,
+  resumesShared,
+  feedbackSubmitted,
   pdfGenerationTime,
   atsScoreGauge,
   register,

@@ -145,13 +145,25 @@ const Details = () => {
         // Populate personal info
         if (info.personalInfo) {
           const p = info.personalInfo;
+          let githubUrl = '';
+          
+          // Handle both old format (string array) and new format (object array)
+          if (p.links && p.links.length > 0) {
+            const githubLink = p.links.find(l => 
+              typeof l === 'string' ? l.includes('github') : l.platform?.toLowerCase() === 'github'
+            );
+            githubUrl = typeof githubLink === 'string' 
+              ? githubLink.replace(/^https?:\/\//, '') 
+              : githubLink?.url?.replace(/^https?:\/\//, '') || '';
+          }
+          
           setPersonal({
             firstName: p.fullName?.split(' ')[0] || '',
             lastName: p.fullName?.split(' ').slice(1).join(' ') || '',
             email: p.email || user?.email || '',
             phone: p.phone || '',
             location: p.location || '',
-            github: (p.links || []).find(l => l.includes?.('github'))?.replace(/^https?:\/\//, '') || '',
+            github: githubUrl,
           });
         }
 
@@ -386,12 +398,20 @@ const Details = () => {
     };
 
     if (activeSections.includes('Personal')) {
+      const links = [];
+      if (personal.github) {
+        links.push({
+          platform: 'GitHub',
+          url: `https://${personal.github.replace(/^https?:\/\//, '')}`
+        });
+      }
+      
       info.personalInfo = {
         fullName: `${personal.firstName} ${personal.lastName}`.trim(),
         email: personal.email,
         phone: personal.phone,
         location: personal.location,
-        links: personal.github ? [`https://${personal.github.replace(/^https?:\/\//, '')}`] : [],
+        links: links,
       };
     }
 

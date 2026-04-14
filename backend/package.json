@@ -20,7 +20,6 @@
     "express-prom-bundle": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "marked": "4.3.0",
-    "mongodb": "^7.1.1",
     "mongoose": "^8.23.0",
     "multer": "^2.0.2",
     "nodemailer": "^8.0.4",
