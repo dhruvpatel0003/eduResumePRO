@@ -261,7 +261,7 @@ const Details = () => {
     };
 
     loadResumeDetails();
-  }, [resumeId]);
+  }, [resumeId, user?.email]);
 
   // Track detail changes for stale detection
   const markDetailsUpdated = useCallback(() => {
@@ -327,6 +327,7 @@ const Details = () => {
     if (!visibleTabs.includes(currentTab)) {
       setCurrentTab('Tab Overview');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSections]);
 
   // Selection helpers
@@ -756,7 +757,7 @@ const Details = () => {
 
   const isTabOverview = currentTab === 'Tab Overview';
   const isCreateResumeTab = currentTab === 'Create Resume';
-  const isContentTab = !isTabOverview && !isCreateResumeTab;
+  const isContentTab = !isTabOverview && !isCreateResumeTab; // eslint-disable-line no-unused-vars
   const isRepeatableTab = REPEATABLE_SECTIONS.includes(currentTab);
 
   // Determine what Add modal should show

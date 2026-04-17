@@ -188,7 +188,8 @@ const Report = () => {
   };
 
   // Navigation guard — available for sidebar/external callers
-  const handleNavigateAway = useCallback((path) => { // eslint-disable-line no-unused-vars
+  // eslint-disable-next-line no-unused-vars
+  const handleNavigateAway = useCallback((path) => {
     if (hasUpdated && !reportDownloaded) {
       setPendingNavigation(path);
       setShowLeaveModal(true);
