@@ -174,26 +174,43 @@ const Notifications = () => {
               <span className="notification-sender">{notification.senderEmail}</span>
               <span className="notification-content">
                 {notification.content}
-                {notification.link && (
-                  <button 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      navigate(notification.link);
-                    }} 
-                    style={{
-                      marginLeft: '15px', 
-                      padding: '4px 10px', 
-                      background: '#eff6ff', 
-                      color: '#2563eb', 
-                      border: '1px solid #bfdbfe', 
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    View Details
-                  </button>
-                )}
+                {(() => {
+                  // Determine the best navigation target
+                  let target = notification.link || '';
+                  const type = (notification.type || notification.notificationType || '').toLowerCase();
+                  const resumeId = notification.resumeId || notification.resume;
+
+                  if (!target && resumeId) {
+                    if (type.includes('feedback') || type.includes('review')) {
+                      target = `/shared`;
+                    } else if (type.includes('share')) {
+                      target = `/professor/request/${resumeId}`;
+                    } else {
+                      target = `/details/${resumeId}`;
+                    }
+                  }
+
+                  return target ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(target);
+                      }}
+                      style={{
+                        marginLeft: '15px',
+                        padding: '4px 10px',
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      View Details
+                    </button>
+                  ) : null;
+                })()}
               </span>
             </div>
           ))}

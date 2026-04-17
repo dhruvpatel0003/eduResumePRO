@@ -114,12 +114,33 @@ const resumeService = {
     }
   },
 
-  acceptAllFeedback: async (resumeId) => {
+  acceptAllFeedback: async (resumeId, { autoRegenerate } = {}) => {
     try {
-      const response = await api.post(`/resumes/${resumeId}/feedback/accept-all`);
+      const body = autoRegenerate ? { autoRegenerate: true } : {};
+      const response = await api.post(`/resumes/${resumeId}/feedback/accept-all`, body);
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to accept feedback';
+    }
+  },
+
+  acceptAiFeedback: async (resumeId, comments, { autoRegenerate } = {}) => {
+    try {
+      const body = { comments };
+      if (autoRegenerate) body.autoRegenerate = true;
+      const response = await api.post(`/resumes/${resumeId}/ai-feedback/accept-all`, body);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to accept AI feedback';
+    }
+  },
+
+  generatePdfWithOptions: async (resumeId, options = {}) => {
+    try {
+      const response = await api.post(`/resumes/${resumeId}/generate`, options);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Could not generate resume. Try again.';
     }
   },
 };

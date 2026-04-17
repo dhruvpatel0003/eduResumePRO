@@ -53,21 +53,20 @@ const Profile = () => {
         setLoading(true);
         setFetchError('');
 
-        // TODO: replace with real API call — authService.getProfile()
-        await new Promise(resolve => setTimeout(resolve, 300));
+        const data = await authService.getProfile();
+        const p = data.user || data;
 
-        // Populate from auth context for now
         setProfile({
-          name: user?.name || '',
-          email: user?.email || '',
-          alternateEmail: '',
-          university: '',
-          major: '',
-          stream: '',
-          role: user?.role || '',
+          name: p.name || user?.name || '',
+          email: p.email || user?.email || '',
+          alternateEmail: p.alternateEmail || '',
+          university: p.university || '',
+          major: p.major || '',
+          stream: p.stream || '',
+          role: p.role || user?.role || '',
         });
       } catch (err) {
-        setFetchError(err || 'Failed to load profile');
+        setFetchError(typeof err === 'string' ? err : 'Failed to load profile');
       } finally {
         setLoading(false);
       }
@@ -101,8 +100,7 @@ const Profile = () => {
       setSaving(true);
       setFieldError('');
 
-      // TODO: replace with real API call — authService.updateProfile(field.key, trimmed)
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await authService.updateProfile(field.key, trimmed);
 
       const updatedProfile = { ...profile, [field.key]: trimmed };
       setProfile(updatedProfile);

@@ -56,6 +56,9 @@ const ProfessorDashboard = () => {
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
+  // Summary stats
+  const [stats, setStats] = useState({ pending: 0, viewed: 0, completed: 0, total: 0 });
+
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   // Fetch requests
@@ -75,6 +78,12 @@ const ProfessorDashboard = () => {
           : '',
         status: r.status || 'pending',
       }));
+
+      // Compute stats from unfiltered list
+      const pendingCount = allRequests.filter(r => r.status.toLowerCase() === 'pending').length;
+      const viewedCount = allRequests.filter(r => r.status.toLowerCase() === 'viewed').length;
+      const completedCount = allRequests.filter(r => r.status.toLowerCase() === 'completed').length;
+      setStats({ pending: pendingCount, viewed: viewedCount, completed: completedCount, total: allRequests.length });
 
       // Client-side filtering
       if (filters.status !== 'all') {
@@ -157,6 +166,30 @@ const ProfessorDashboard = () => {
 
   return (
     <div>
+      {/* Stats Summary */}
+      {!loading && stats.total > 0 && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Pending Reviews', count: stats.pending, color: '#f59e0b', bg: '#fffbeb' },
+            { label: 'Under Review', count: stats.viewed, color: '#3b82f6', bg: '#eff6ff' },
+            { label: 'Completed', count: stats.completed, color: '#059669', bg: '#f0fdf4' },
+            { label: 'Total', count: stats.total, color: '#6b7280', bg: '#f3f4f6' },
+          ].map(s => (
+            <div key={s.label} style={{
+              flex: '1 1 140px',
+              padding: '14px 18px',
+              background: s.bg,
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.count}</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Filter Panel */}
       <div className="prof-dash-filters">
         <div className="prof-dash-filter-fields">
