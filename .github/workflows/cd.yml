@@ -56,12 +56,23 @@ jobs:
   deploy-render:
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: EduResumePRO
 
     steps:
       - name: Deploy Backend to Render
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}"
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}"
+          else
+            echo "Skip backend deploy: Hook not provided."
+          fi
         continue-on-error: true
 
       - name: Deploy Frontend to Render
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}"
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}"
+          else
+            echo "Skip frontend deploy: Hook not provided."
+          fi
         continue-on-error: true
