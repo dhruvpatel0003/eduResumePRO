@@ -211,21 +211,30 @@ jobs:
   deploy-render:
     needs: [backend-tests, frontend-tests, codeql-scan, gitleaks-scan, trivy-scan]
     runs-on: ubuntu-latest
+    environment: EduResumePRO
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Deploy Frontend to Render
         run: |
-          curl -X POST \
-            "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" \
-            -H 'Content-Type: application/json'
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" ]; then
+            curl -X POST \
+              "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" \
+              -H 'Content-Type: application/json'
+          else
+            echo "Skip frontend deploy: Hook not provided."
+          fi
 
       - name: Deploy Backend to Render
         run: |
-          curl -X POST \
-            "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" \
-            -H 'Content-Type: application/json'
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" ]; then
+            curl -X POST \
+              "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" \
+              -H 'Content-Type: application/json'
+          else
+            echo "Skip backend deploy: Hook not provided."
+          fi
 
   ci-status:
     runs-on: ubuntu-latest
