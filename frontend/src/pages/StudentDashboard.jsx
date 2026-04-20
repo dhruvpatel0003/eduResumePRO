@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/layout/icons';
 import jobService from '../services/jobService';
+import resumeService from '../services/resumeService';
 import '../styles/dashboard.css';
 
 // Filter options — extensible for future additions
@@ -12,6 +14,12 @@ const DEFAULT_FILTER = 'most_recent';
 const PAGE_SIZE = 4;
 
 const StudentDashboard = () => {
+  const navigate = useNavigate();
+
+  // Resume activity state
+  const [resumeSummaries, setResumeSummaries] = useState([]);
+  const [resumesLoading, setResumesLoading] = useState(true);
+
   // Filter state
   const [selectedFilter, setSelectedFilter] = useState(DEFAULT_FILTER);
   const [appliedFilter, setAppliedFilter] = useState(DEFAULT_FILTER);
@@ -58,6 +66,34 @@ const StudentDashboard = () => {
     fetchJobs(appliedFilter, currentPage);
   }, [appliedFilter, currentPage, fetchJobs]);
 
+  // Load resume summaries
+  useEffect(() => {
+    const loadResumes = async () => {
+      try {
+        const data = await resumeService.getMyResumes();
+        const resumes = data.resumes || [];
+        const summaries = resumes.slice(0, 5).map(r => {
+          const reviewers = r.reviewers || [];
+          const hasFeedback = reviewers.some(rv => rv.status === 'completed');
+          const isShared = reviewers.length > 0;
+          return {
+            id: r._id,
+            title: r.title || 'Untitled',
+            updatedAt: r.updatedAt,
+            hasFeedback,
+            isShared,
+          };
+        });
+        setResumeSummaries(summaries);
+      } catch {
+        // fail silently
+      } finally {
+        setResumesLoading(false);
+      }
+    };
+    loadResumes();
+  }, []);
+
   // Apply filter
   const handleApply = () => {
     setAppliedFilter(selectedFilter);
@@ -94,6 +130,48 @@ const StudentDashboard = () => {
 
   return (
     <div>
+      {/* Resume Activity Section */}
+      {!resumesLoading && resumeSummaries.length > 0 && (
+        <div style={{ marginBottom: 20, padding: '16px 20px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', marginBottom: 12 }}>My Resumes</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {resumeSummaries.map(r => (
+              <div
+                key={r.id}
+                style={{
+                  padding: '10px 14px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  minWidth: 180,
+                  background: r.hasFeedback ? '#f0fdf4' : '#fff',
+                }}
+                onClick={() => navigate(`/details/${r.id}`)}
+              >
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>{r.title}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {r.hasFeedback && (
+                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 10, background: '#f0fdf4', color: '#059669', fontWeight: 500 }}>
+                      Feedback
+                    </span>
+                  )}
+                  {r.isShared && !r.hasFeedback && (
+                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 10, background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
+                      Shared
+                    </span>
+                  )}
+                  {!r.isShared && (
+                    <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 10, background: '#f3f4f6', color: '#6b7280', fontWeight: 500 }}>
+                      Draft
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="dashboard-filter-row">
         <div className="dashboard-filter-left">

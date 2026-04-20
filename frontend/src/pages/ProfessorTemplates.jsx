@@ -61,6 +61,7 @@ const ProfessorTemplates = () => {
 
   useEffect(() => {
     fetchTemplates(appliedScope);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedScope]);
 
   // Filter actions
@@ -148,7 +149,7 @@ const ProfessorTemplates = () => {
       formData.append('pdf', uploadFile);
       formData.append('name', uploadFile.name.replace(/\.[^/.]+$/, ''));
 
-      const data = await templateService.create(formData);
+      await templateService.create(formData);
 
       // Refresh templates list
       setShowUploadModal(false);

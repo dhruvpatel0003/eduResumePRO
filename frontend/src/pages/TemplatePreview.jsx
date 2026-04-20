@@ -5,6 +5,7 @@ import DocumentViewer from '../components/DocumentViewer';
 import templateService from '../services/templateService';
 import resumeService from '../services/resumeService';
 import '../styles/templates.css';
+import '../styles/details.css';
 
 const TemplatePreview = () => {
   const { id } = useParams();
@@ -17,6 +18,8 @@ const TemplatePreview = () => {
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showTitleModal, setShowTitleModal] = useState(false);
+  const [resumeTitle, setResumeTitle] = useState('');
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -56,19 +59,26 @@ const TemplatePreview = () => {
     navigate(major ? `/templates?major=${major}` : '/templates');
   };
 
+  const handleOpenTitleModal = () => {
+    setResumeTitle(template?.name || 'My Resume');
+    setShowTitleModal(true);
+  };
+
   const handleUseIt = async () => {
+    setShowTitleModal(false);
     try {
       setIsApplying(true);
       setApplyError('');
       setShowSuccess(false);
 
-      const data = await resumeService.createFromTemplate(id, template?.name || 'My Resume');
+      const title = resumeTitle.trim() || template?.name || 'My Resume';
+      const data = await resumeService.createFromTemplate(id, title);
 
       setShowSuccess(true);
 
-      const resumeId = data.resume?._id || data.resume?.id;
+      const newResumeId = data.resume?._id || data.resume?.id;
       setTimeout(() => {
-        navigate(resumeId ? `/details/${resumeId}` : '/resumes');
+        navigate(newResumeId ? `/details/${newResumeId}` : '/resumes');
       }, 1500);
     } catch (err) {
       setApplyError(err || 'Could not apply template. Please try again.');
@@ -100,7 +110,7 @@ const TemplatePreview = () => {
         </button>
         <button
           className="btn-primary templates-use-btn"
-          onClick={handleUseIt}
+          onClick={handleOpenTitleModal}
           disabled={isApplying || loading || !!error}
         >
           {isApplying ? 'Applying...' : 'Use This Template'}
@@ -126,6 +136,38 @@ const TemplatePreview = () => {
           numPages={template.numPages || 1}
           placeholderLabel="Template Preview"
         />
+      )}
+
+      {/* Title Input Modal */}
+      {showTitleModal && (
+        <div className="modal-overlay" onClick={() => setShowTitleModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">Name Your Resume</div>
+            <div className="modal-body">
+              <label htmlFor="resume-title-input" style={{ display: 'block', marginBottom: 8 }}>
+                Resume Title
+              </label>
+              <input
+                id="resume-title-input"
+                type="text"
+                value={resumeTitle}
+                onChange={(e) => setResumeTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleUseIt(); }}
+                autoFocus
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                placeholder="My Resume"
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn-cancel" onClick={() => setShowTitleModal(false)}>
+                Cancel
+              </button>
+              <button className="modal-btn-confirm" onClick={handleUseIt} disabled={!resumeTitle.trim()}>
+                Create Resume
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,155 +1,158 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import hunterService from '../services/hunterService';
+import resumeService from '../services/resumeService';
 import '../styles/hunter.css';
 
-// Mock data — replace with real API calls
-const MOCK_RESUMES = [
-  { id: 'r1', title: 'My Resume' },
-];
-
-const MOCK_COMPANIES = [
-  { id: 'c1', name: 'Tesla Inc.' },
-  { id: 'c2', name: 'Google LLC' },
-  { id: 'c3', name: 'Amazon Web Services' },
-];
-
-const MOCK_JOBS = {
-  c1: [
-    { id: 'j1', title: 'Junior Software Developer', company: 'Tesla Inc.', location: 'Bangalore' },
-    { id: 'j2', title: 'Senior Backend Engineer', company: 'Tesla Inc.', location: 'Hyderabad' },
-    { id: 'j3', title: 'Data Analyst', company: 'Tesla Inc.', location: 'Bangalore' },
-  ],
-  c2: [
-    { id: 'j4', title: 'Frontend Engineer', company: 'Google LLC', location: 'Mountain View' },
-    { id: 'j5', title: 'Cloud Solutions Architect', company: 'Google LLC', location: 'New York' },
-  ],
-  c3: [
-    { id: 'j6', title: 'DevOps Engineer', company: 'Amazon Web Services', location: 'Seattle' },
-  ],
-};
-
-const generateMockAnalysis = () => ({
-  atsScore: null,
-  feedback: [
-    {
-      id: 'f1',
-      type: 'missing_keyword',
-      message: 'Missing tech stack like Kibana and GraphQL',
-      accepted: false,
-    },
-    {
-      id: 'f2',
-      type: 'missing_keyword',
-      message: 'Add experience with CI/CD pipelines (Jenkins, GitHub Actions)',
-      accepted: false,
-    },
-    {
-      id: 'f3',
-      type: 'missing_keyword',
-      message: 'Include cloud platform certifications (AWS, GCP)',
-      accepted: false,
-    },
-  ],
-});
-
 const Hunter = () => {
-  const navigate = useNavigate();
+  // Resume list
+  const [resumes, setResumes] = useState([]);
+  const [resumesLoading, setResumesLoading] = useState(true);
 
-  // Filter state
+  // Search inputs
   const [selectedResume, setSelectedResume] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [jobFilter, setJobFilter] = useState('matched'); // 'all' | 'matched'
-  const [selectedJob, setSelectedJob] = useState('');
-  const [availableJobs, setAvailableJobs] = useState([]);
+  const [searchLocation, setSearchLocation] = useState('');
+  const [companyType, setCompanyType] = useState('');
+  const [keywords, setKeywords] = useState('');
 
-  // Results state
+  // Companies
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+
+  // Jobs
+  const [jobs, setJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobFilter, setJobFilter] = useState('all');
+
+  // Analysis results
   const [analysis, setAnalysis] = useState(null);
-  const [atsScore, setAtsScore] = useState(null);
-  const [atsLoading, setAtsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
 
-  // Load jobs when company changes
+  // Load resumes on mount
   useEffect(() => {
-    if (!selectedCompany) {
-      setAvailableJobs([]);
-      setSelectedJob('');
-      return;
+    const loadResumes = async () => {
+      try {
+        const data = await resumeService.getMyResumes();
+        setResumes(data.resumes || []);
+      } catch {
+        // silently fail - user can still use the page
+      } finally {
+        setResumesLoading(false);
+      }
+    };
+    loadResumes();
+  }, []);
+
+  // Search companies
+  const handleSearchCompanies = async () => {
+    if (!searchLocation && !companyType && !keywords) return;
+    setCompaniesLoading(true);
+    setError('');
+    setCompanies([]);
+    setSelectedCompany('');
+    setJobs([]);
+    setSelectedJob(null);
+    setAnalysis(null);
+
+    try {
+      const data = await hunterService.searchCompanies(searchLocation, companyType, keywords);
+      const companyList = data.companies || data || [];
+      setCompanies(Array.isArray(companyList) ? companyList : []);
+    } catch (err) {
+      setError(typeof err === 'string' ? err : 'Failed to search companies.');
+    } finally {
+      setCompaniesLoading(false);
     }
+  };
 
-    // TODO: replace with real API call
-    const jobs = MOCK_JOBS[selectedCompany] || [];
-    setAvailableJobs(jobs);
-    setSelectedJob(jobs[0]?.id || '');
-  }, [selectedCompany]);
+  // Search jobs when company is selected
+  const handleSearchJobs = async (companyName) => {
+    setSelectedCompany(companyName);
+    setJobsLoading(true);
+    setError('');
+    setJobs([]);
+    setSelectedJob(null);
+    setAnalysis(null);
 
-  // Filter jobs based on radio selection
+    try {
+      const data = await hunterService.searchJobs(companyName, searchLocation, keywords);
+      const jobList = data.jobs || data || [];
+      setJobs(Array.isArray(jobList) ? jobList : []);
+    } catch (err) {
+      setError(typeof err === 'string' ? err : 'Failed to fetch jobs.');
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  // Filter jobs
   const filteredJobs = jobFilter === 'all'
-    ? availableJobs
-    : availableJobs.filter(j =>
-        j.title.toLowerCase().includes('software') ||
-        j.title.toLowerCase().includes('developer') ||
-        j.title.toLowerCase().includes('engineer')
-      );
+    ? jobs
+    : jobs.filter(j => {
+        const title = (j.title || '').toLowerCase();
+        return title.includes('software') || title.includes('developer') || title.includes('engineer');
+      });
 
-  // Ensure selected job is valid when filter changes
-  useEffect(() => {
-    if (filteredJobs.length > 0 && !filteredJobs.find(j => j.id === selectedJob)) {
-      setSelectedJob(filteredJobs[0]?.id || '');
-    }
-  }, [jobFilter, filteredJobs, selectedJob]);
-
-  const canHunt = selectedResume && selectedCompany;
-
-  // Hunt action
+  // Hunt/Analyze
   const handleHunt = async () => {
-    if (!canHunt) return;
+    if (!selectedResume || !selectedJob) return;
     setLoading(true);
     setError('');
     setShowSuccess(false);
     setAnalysis(null);
-    setAtsScore(null);
 
     try {
-      // TODO: replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const data = generateMockAnalysis();
-      setAnalysis(data);
+      const jobPayload = [{
+        jobId: selectedJob.jobId || selectedJob.id,
+        title: selectedJob.title,
+        company: selectedJob.company || selectedCompany,
+        location: selectedJob.location,
+        description: selectedJob.description || '',
+      }];
+      const data = await hunterService.analyze(selectedResume, jobPayload);
+      // Normalize the response
+      const result = data.analysis || data;
+      const feedback = (result.aiSuggestions || result.feedback || result.comments || []).map((item, idx) => ({
+        id: item.id || `fb-${idx}`,
+        fieldPath: item.fieldPath || '',
+        type: item.type || 'suggestion',
+        originalValue: item.originalValue || '',
+        suggestedValue: item.suggestedValue || '',
+        note: item.note || item.message || '',
+        accepted: false,
+      }));
+
+      setAnalysis({
+        atsScore: result.atsScore ?? result.ats_score ?? null,
+        matchScore: result.matchScore ?? result.match_score ?? null,
+        feedback,
+      });
     } catch (err) {
-      setError('Could not analyze resume. Please try again.');
+      setError(typeof err === 'string' ? err : 'Could not analyze resume. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset action
+  // Reset
   const handleReset = () => {
     setSelectedResume('');
+    setSearchLocation('');
+    setCompanyType('');
+    setKeywords('');
+    setCompanies([]);
     setSelectedCompany('');
-    setSelectedJob('');
-    setJobFilter('matched');
+    setJobs([]);
+    setSelectedJob(null);
+    setJobFilter('all');
     setAnalysis(null);
-    setAtsScore(null);
     setError('');
     setShowSuccess(false);
-  };
-
-  // Get ATS Score
-  const handleGetAtsScore = async () => {
-    if (!analysis) return;
-    setAtsLoading(true);
-
-    try {
-      // TODO: replace with real API call (reuses report engine logic)
-      await new Promise(resolve => setTimeout(resolve, 600));
-      const score = 60;
-      setAtsScore(score);
-    } catch (err) {
-      setError('Could not calculate ATS score.');
-    } finally {
-      setAtsLoading(false);
-    }
   };
 
   // Toggle feedback acceptance
@@ -179,15 +182,29 @@ const Hunter = () => {
   const hasAcceptedFeedback = analysis?.feedback.some(f => f.accepted) || false;
   const allAccepted = analysis?.feedback.length > 0 && analysis.feedback.every(f => f.accepted);
 
-  // Update Resume — reuses Report Update Resume flow
-  const handleUpdateResume = () => {
-    if (!hasAcceptedFeedback) return;
-    // Navigate to report with context to apply hunter suggestions
-    navigate('/report', { state: { fromHunter: true, resumeId: selectedResume } });
+  // Update Resume with accepted AI feedback
+  const handleUpdateResume = async () => {
+    if (!hasAcceptedFeedback || !selectedResume) return;
+    setUpdateLoading(true);
+    setError('');
+    try {
+      const acceptedComments = analysis.feedback
+        .filter(f => f.accepted)
+        .map(f => ({
+          fieldPath: f.fieldPath,
+          type: f.type,
+          originalValue: f.originalValue,
+          suggestedValue: f.suggestedValue,
+          note: f.note,
+        }));
+      await resumeService.acceptAiFeedback(selectedResume, acceptedComments, { autoRegenerate: true });
+      setShowSuccess(true);
+    } catch (err) {
+      setError(typeof err === 'string' ? err : 'Failed to update resume with feedback.');
+    } finally {
+      setUpdateLoading(false);
+    }
   };
-
-  // Format job dropdown label
-  const formatJobLabel = (job) => `${job.title} | ${job.company}`;
 
   return (
     <div>
@@ -209,36 +226,16 @@ const Hunter = () => {
               className="hunter-select"
               value={selectedResume}
               onChange={(e) => setSelectedResume(e.target.value)}
+              disabled={resumesLoading}
             >
               <option value="">-- Select --</option>
-              {MOCK_RESUMES.map(r => (
-                <option key={r.id} value={r.id}>{r.title}</option>
-              ))}
-            </select>
-          </div>
-          <div className="hunter-filter-group">
-            <label htmlFor="hunter-company-select">Select Company</label>
-            <select
-              id="hunter-company-select"
-              className="hunter-select"
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-            >
-              <option value="">-- Select --</option>
-              {MOCK_COMPANIES.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {resumes.map(r => (
+                <option key={r._id} value={r._id}>{r.title}</option>
               ))}
             </select>
           </div>
         </div>
         <div className="hunter-header-right">
-          <button
-            className="hunter-action-link"
-            onClick={handleHunt}
-            disabled={!canHunt || loading}
-          >
-            {loading ? 'Hunting...' : 'Hunt'}
-          </button>
           <button
             className="hunter-action-link"
             onClick={handleReset}
@@ -248,50 +245,149 @@ const Hunter = () => {
         </div>
       </div>
 
-      {/* Secondary Controls Row */}
-      <div className="hunter-secondary-row">
-        <div className="hunter-radio-group">
-          <label className="hunter-radio-option">
-            <input
-              type="radio"
-              name="job-filter"
-              value="all"
-              checked={jobFilter === 'all'}
-              onChange={() => setJobFilter('all')}
-            />
-            Show All
-          </label>
-          <label className="hunter-radio-option">
-            <input
-              type="radio"
-              name="job-filter"
-              value="matched"
-              checked={jobFilter === 'matched'}
-              onChange={() => setJobFilter('matched')}
-            />
-            Matched Job Title
-          </label>
-        </div>
-        <div className="hunter-job-select-group">
-          <select
+      {/* Search Row */}
+      <div className="hunter-secondary-row" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <div className="hunter-filter-group">
+          <label htmlFor="hunter-location">Location</label>
+          <input
+            id="hunter-location"
+            type="text"
             className="hunter-select"
-            value={selectedJob}
-            onChange={(e) => setSelectedJob(e.target.value)}
-            disabled={filteredJobs.length === 0}
-          >
-            {filteredJobs.length === 0 ? (
-              <option value="">No jobs available</option>
-            ) : (
-              filteredJobs.map(j => (
-                <option key={j.id} value={j.id}>{formatJobLabel(j)}</option>
-              ))
-            )}
-          </select>
+            value={searchLocation}
+            onChange={(e) => setSearchLocation(e.target.value)}
+            placeholder="e.g. New York, NY"
+            style={{ minWidth: 160 }}
+          />
         </div>
+        <div className="hunter-filter-group">
+          <label htmlFor="hunter-company-type">Company Type</label>
+          <input
+            id="hunter-company-type"
+            type="text"
+            className="hunter-select"
+            value={companyType}
+            onChange={(e) => setCompanyType(e.target.value)}
+            placeholder="e.g. tech"
+            style={{ minWidth: 120 }}
+          />
+        </div>
+        <div className="hunter-filter-group">
+          <label htmlFor="hunter-keywords">Keywords</label>
+          <input
+            id="hunter-keywords"
+            type="text"
+            className="hunter-select"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            placeholder="e.g. software engineer"
+            style={{ minWidth: 160 }}
+          />
+        </div>
+        <button
+          className="hunter-action-link"
+          onClick={handleSearchCompanies}
+          disabled={companiesLoading || (!searchLocation && !companyType && !keywords)}
+        >
+          {companiesLoading ? 'Searching...' : 'Search Companies'}
+        </button>
       </div>
 
       {/* Error */}
       {error && <div className="hunter-error">{error}</div>}
+
+      {/* Companies List */}
+      {companies.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 8 }}>
+            Companies ({companies.length})
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {companies.map((c, idx) => {
+              const name = c.name || c.company || c;
+              const isSelected = selectedCompany === name;
+              return (
+                <button
+                  key={idx}
+                  className="hunter-action-link"
+                  style={{
+                    border: `1px solid ${isSelected ? '#3b82f6' : '#d1d5db'}`,
+                    borderRadius: 6,
+                    padding: '6px 14px',
+                    background: isSelected ? '#eff6ff' : '#fff',
+                  }}
+                  onClick={() => handleSearchJobs(name)}
+                  disabled={jobsLoading}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Jobs Loading */}
+      {jobsLoading && (
+        <div className="hunter-loading">
+          <div className="hunter-spinner" />
+        </div>
+      )}
+
+      {/* Jobs List */}
+      {!jobsLoading && jobs.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>
+              Jobs at {selectedCompany} ({filteredJobs.length})
+            </div>
+            <div className="hunter-radio-group">
+              <label className="hunter-radio-option">
+                <input type="radio" name="job-filter" value="all" checked={jobFilter === 'all'} onChange={() => setJobFilter('all')} />
+                Show All
+              </label>
+              <label className="hunter-radio-option">
+                <input type="radio" name="job-filter" value="matched" checked={jobFilter === 'matched'} onChange={() => setJobFilter('matched')} />
+                Tech Roles
+              </label>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filteredJobs.map((job, idx) => {
+              const isSelected = selectedJob?.jobId === job.jobId || selectedJob?.id === job.id;
+              return (
+                <div
+                  key={job.jobId || job.id || idx}
+                  style={{
+                    border: `1px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                    borderRadius: 8,
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    background: isSelected ? '#eff6ff' : '#fff',
+                  }}
+                  onClick={() => setSelectedJob(job)}
+                >
+                  <div style={{ fontWeight: 500, fontSize: 14 }}>{job.title}</div>
+                  <div style={{ fontSize: 13, color: '#6b7280' }}>
+                    {job.company || selectedCompany} {job.location ? `| ${job.location}` : ''}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Hunt button */}
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="hunter-action-link"
+              onClick={handleHunt}
+              disabled={!selectedResume || !selectedJob || loading}
+              style={{ border: '1px solid #3b82f6', borderRadius: 6, padding: '8px 20px' }}
+            >
+              {loading ? 'Analyzing...' : 'Hunt'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -305,19 +401,16 @@ const Hunter = () => {
         <div className="hunter-results">
           {/* Results Header */}
           <div className="hunter-results-header">
-            <div>
-              {atsScore !== null ? (
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              {analysis.atsScore !== null && analysis.atsScore !== undefined && (
                 <div className="hunter-ats-display">
-                  ATS SCORE: <span className="hunter-ats-value">{atsScore}%</span>
+                  ATS SCORE: <span className="hunter-ats-value">{analysis.atsScore}%</span>
                 </div>
-              ) : (
-                <button
-                  className="hunter-ats-score-link"
-                  onClick={handleGetAtsScore}
-                  disabled={atsLoading}
-                >
-                  {atsLoading ? 'Calculating...' : 'Get ATS Score'}
-                </button>
+              )}
+              {analysis.matchScore !== null && analysis.matchScore !== undefined && (
+                <div className="hunter-ats-display">
+                  MATCH SCORE: <span className="hunter-ats-value">{analysis.matchScore}%</span>
+                </div>
               )}
             </div>
             <div className="hunter-results-actions">
@@ -331,9 +424,9 @@ const Hunter = () => {
               <button
                 className="hunter-action-link"
                 onClick={handleUpdateResume}
-                disabled={!hasAcceptedFeedback}
+                disabled={!hasAcceptedFeedback || updateLoading}
               >
-                Update Resume
+                {updateLoading ? 'Updating...' : 'Update Resume'}
               </button>
             </div>
           </div>
@@ -350,11 +443,17 @@ const Hunter = () => {
                     type="checkbox"
                     checked={item.accepted}
                     onChange={() => toggleFeedback(item.id)}
-                    aria-label={`Accept: ${item.message}`}
+                    aria-label={`Accept: ${item.note}`}
                   />
                   <div className="hunter-feedback-message">
-                    <div className="hunter-feedback-type">{item.type.replace('_', ' ')}</div>
-                    {item.message}
+                    <div className="hunter-feedback-type">{item.fieldPath || item.type}</div>
+                    {item.note}
+                    {item.originalValue && item.suggestedValue && (
+                      <div style={{ marginTop: 6, fontSize: 13 }}>
+                        <div style={{ color: '#991b1b', textDecoration: 'line-through' }}>{item.originalValue}</div>
+                        <div style={{ color: '#065f46' }}>{item.suggestedValue}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -366,9 +465,9 @@ const Hunter = () => {
       )}
 
       {/* Empty state before hunt */}
-      {!loading && !analysis && !error && (
+      {!loading && !analysis && !error && companies.length === 0 && (
         <div className="hunter-empty">
-          Select a resume and company, then click Hunt to analyze.
+          Enter search criteria above to find companies and job openings, then analyze your resume.
         </div>
       )}
     </div>

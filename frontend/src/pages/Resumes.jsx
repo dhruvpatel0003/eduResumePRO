@@ -192,6 +192,41 @@ const Resumes = () => {
                 )}
               </div>
               <div className="resumes-card-name">{resume.title}</div>
+              <div className="resumes-card-meta">
+                {(() => {
+                  const badges = [];
+                  const reviewers = resume.reviewers || [];
+                  const hasReviewers = reviewers.length > 0;
+                  const hasFeedback = reviewers.some(r => r.status === 'completed');
+
+                  if (hasFeedback) badges.push({ label: 'Feedback', color: '#059669', bg: '#f0fdf4' });
+                  else if (hasReviewers) badges.push({ label: 'Shared', color: '#2563eb', bg: '#eff6ff' });
+
+                  if (resume.pdfGenerated || resume.pdfUrl) badges.push({ label: 'Generated', color: '#7c3aed', bg: '#f5f3ff' });
+
+                  if (badges.length === 0) badges.push({ label: 'Draft', color: '#6b7280', bg: '#f3f4f6' });
+
+                  return badges.map(b => (
+                    <span key={b.label} style={{
+                      display: 'inline-block',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      color: b.color,
+                      background: b.bg,
+                      marginRight: 4,
+                    }}>
+                      {b.label}
+                    </span>
+                  ));
+                })()}
+                {resume.updatedAt && (
+                  <span style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginTop: 4 }}>
+                    Updated {new Date(resume.updatedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </label>
           ))}
         </div>

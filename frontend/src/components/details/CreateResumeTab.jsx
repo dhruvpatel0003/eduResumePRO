@@ -11,6 +11,8 @@ const CreateResumeTab = ({
   isStale,
   onCreateResume,
   onDownload,
+  enhanceProjects,
+  onEnhanceProjectsChange,
 }) => {
   return (
     <div className="create-resume-tab">
@@ -19,6 +21,19 @@ const CreateResumeTab = ({
         <div className="create-resume-stale-notice">
           Your details have changed. Regenerate resume to reflect updates.
         </div>
+      )}
+
+      {/* Enhance Projects Option */}
+      {onEnhanceProjectsChange && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={enhanceProjects || false}
+            onChange={(e) => onEnhanceProjectsChange(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: '#3b82f6' }}
+          />
+          Enhance projects to match template format
+        </label>
       )}
 
       {/* Generation error */}

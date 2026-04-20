@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ActivityTab = ({ entries, selections, onToggle, onChange }) => {
+const ActivityTab = ({ entries, selections, onToggle, onChange, onEraGenerate }) => {
   return (
     <div>
       {entries.map((entry, index) => (
@@ -64,7 +64,11 @@ const ActivityTab = ({ entries, selections, onToggle, onChange }) => {
                 onChange={(e) => onChange(entry.id, 'description', e.target.value)}
                 placeholder="Describe the activity"
               />
-              <button type="button" className="generate-era-link" onClick={() => {}}>
+              <button
+                type="button"
+                className="generate-era-link"
+                onClick={() => onEraGenerate && onEraGenerate(entry, 'activity')}
+              >
                 Generate with ERA
               </button>
             </div>

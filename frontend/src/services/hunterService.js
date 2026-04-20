@@ -22,41 +22,40 @@ api.interceptors.request.use(
 );
 
 const hunterService = {
-  analyze: async (resumeId, companyId, jobId) => {
+  searchCompanies: async (location, companyType, keywords) => {
     try {
-      const response = await api.post('/hunter/analyze', { resumeId, companyId, jobId });
+      const response = await api.post('/hunter/companies/dynamic', {
+        location,
+        companyType,
+        keywords,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to search companies';
+    }
+  },
+
+  searchJobs: async (company, location, keywords) => {
+    try {
+      const response = await api.post('/hunter/jobs', {
+        company,
+        location,
+        keywords,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to fetch jobs';
+    }
+  },
+
+  analyze: async (resumeId, jobs) => {
+    try {
+      const response = await api.post('/hunter/analyze', { resumeId, jobs });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to analyze resume';
     }
   },
-
-  getAtsScore: async (resumeId, jobId) => {
-    try {
-      const response = await api.post('/hunter/ats-score', { resumeId, jobId });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to get ATS score';
-    }
-  },
-
-  getCompanies: async () => {
-    try {
-      const response = await api.get('/hunter/companies');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to fetch companies';
-    }
-  },
-
-  getJobsByCompany: async (companyId) => {
-    try {
-      const response = await api.get(`/hunter/companies/${companyId}/jobs`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || 'Failed to fetch jobs';
-    }
-  }
 };
 
 export default hunterService;

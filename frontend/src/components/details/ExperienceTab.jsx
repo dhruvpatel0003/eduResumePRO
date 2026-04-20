@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ExperienceTab = ({ entries, selections, onToggle, onChange }) => {
+const ExperienceTab = ({ entries, selections, onToggle, onChange, onEraGenerate }) => {
   return (
     <div>
       {entries.map((entry, index) => (
@@ -64,7 +64,11 @@ const ExperienceTab = ({ entries, selections, onToggle, onChange }) => {
                 onChange={(e) => onChange(entry.id, 'description', e.target.value)}
                 placeholder="Describe your responsibilities and achievements"
               />
-              <button type="button" className="generate-era-link" onClick={() => {}}>
+              <button
+                type="button"
+                className="generate-era-link"
+                onClick={() => onEraGenerate && onEraGenerate(entry, 'job')}
+              >
                 Generate with ERA
               </button>
             </div>

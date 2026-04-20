@@ -82,6 +82,9 @@ const StudentShared = () => {
                 id: c._id || `fb-${idx}`,
                 section: c.fieldPath?.toUpperCase() || 'GENERAL',
                 message: c.text || c.note || c.suggestedValue || '',
+                originalValue: c.originalValue || '',
+                suggestedValue: c.suggestedValue || '',
+                note: c.note || '',
                 accepted: c.status === 'accepted',
               })),
             });
@@ -203,7 +206,7 @@ const StudentShared = () => {
   const handleConfirmUpdate = async () => {
     if (!activeEntry?.resumeId) return;
     try {
-      await resumeService.acceptAllFeedback(activeEntry.resumeId);
+      await resumeService.acceptAllFeedback(activeEntry.resumeId, { autoRegenerate: true });
       setShowConfirmModal(false);
       setActiveEntry(prev => prev ? { ...prev, status: 'Resolved' } : prev);
       setSuccessBanner('Resume updated and feedback accepted.');
@@ -354,9 +357,23 @@ const StudentShared = () => {
                         onChange={() => toggleFeedback(item.id)}
                         aria-label={`Accept feedback: ${item.message}`}
                       />
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <div className="shared-feedback-section-label">{item.section}</div>
-                        <div className="shared-feedback-message">{item.message}</div>
+                        {item.originalValue && item.suggestedValue ? (
+                          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                            <div style={{ color: '#991b1b', textDecoration: 'line-through', background: '#fef2f2', padding: '4px 8px', borderRadius: 4, marginBottom: 4 }}>
+                              {item.originalValue}
+                            </div>
+                            <div style={{ color: '#065f46', background: '#f0fdf4', padding: '4px 8px', borderRadius: 4, marginBottom: 4 }}>
+                              {item.suggestedValue}
+                            </div>
+                            {item.note && (
+                              <div style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>{item.note}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="shared-feedback-message">{item.message}</div>
+                        )}
                       </div>
                     </div>
                   </div>

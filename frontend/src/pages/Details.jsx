@@ -13,6 +13,7 @@ import ActivityTab from '../components/details/ActivityTab';
 import CreateResumeTab from '../components/details/CreateResumeTab';
 import AddModal from '../components/details/AddModal';
 import DeleteModal from '../components/details/DeleteModal';
+import eraService from '../services/eraService';
 import '../styles/details.css';
 
 // All possible content sections (order matters)
@@ -121,6 +122,12 @@ const Details = () => {
   // Navigation guard
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+
+  // ERA modal state
+  const [eraModal, setEraModal] = useState(null); // { entry, type, result, loading, error }
+
+  // Enhance projects toggle
+  const [enhanceProjects, setEnhanceProjects] = useState(false);
 
   // Stale detection
   const isResumeStale = resumeGenerated &&
@@ -254,12 +261,49 @@ const Details = () => {
     };
 
     loadResumeDetails();
-  }, [resumeId]);
+  }, [resumeId, user?.email]);
 
   // Track detail changes for stale detection
   const markDetailsUpdated = useCallback(() => {
     setDetailsLastUpdatedAt(Date.now());
   }, []);
+
+  // ERA Generate handler
+  const handleEraGenerate = async (entry, type) => {
+    const brief = entry.description || entry.name || '';
+    const points = brief.split('\n').filter(l => l.trim());
+    const context = type === 'job'
+      ? `${entry.role || ''} at ${entry.company || ''}`.trim()
+      : type === 'project'
+        ? `Project: ${entry.name || ''}`.trim()
+        : `Activity: ${entry.name || ''}`.trim();
+
+    setEraModal({ entry, type, result: null, loading: true, error: null });
+
+    try {
+      const data = await eraService.generate(type, brief, points, context);
+      const generated = data.description || data.result || data.text || data;
+      setEraModal(prev => prev ? { ...prev, result: typeof generated === 'string' ? generated : JSON.stringify(generated), loading: false } : null);
+    } catch (err) {
+      setEraModal(prev => prev ? { ...prev, error: typeof err === 'string' ? err : 'Failed to generate.', loading: false } : null);
+    }
+  };
+
+  const handleEraAccept = () => {
+    if (!eraModal?.result || !eraModal?.entry) return;
+    const { entry, type } = eraModal;
+
+    // Update the description field for the matching entry
+    if (type === 'job') {
+      setExperienceEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
+    } else if (type === 'project') {
+      setProjectEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
+    } else if (type === 'activity') {
+      setActivityEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
+    }
+    markDetailsUpdated();
+    setEraModal(null);
+  };
 
   // Tab navigation — uses visibleTabs
   const currentTabIndex = visibleTabs.indexOf(currentTab);
@@ -283,6 +327,7 @@ const Details = () => {
     if (!visibleTabs.includes(currentTab)) {
       setCurrentTab('Tab Overview');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSections]);
 
   // Selection helpers
@@ -559,7 +604,7 @@ const Details = () => {
       const fullTemplateInfo = { ...existing.templateInfo, ...buildTemplateInfo() };
       await resumeService.updateDetails(resumeId, fullTemplateInfo);
 
-      await resumeService.generatePdf(resumeId);
+      await resumeService.generatePdfWithOptions(resumeId, enhanceProjects ? { enhanceProjects: true } : {});
 
       // Try to load the PDF for preview
       let previewUrl = null;
@@ -665,6 +710,7 @@ const Details = () => {
             selections={getSelectedIds()}
             onToggle={(id) => toggleSelection('Professional Experience', id)}
             onChange={updateEntry(setExperienceEntries)}
+            onEraGenerate={handleEraGenerate}
           />
         );
       case 'Projects':
@@ -675,6 +721,8 @@ const Details = () => {
             onToggle={(id) => toggleSelection('Projects', id)}
             onChange={updateEntry(setProjectEntries)}
             githubUrl={personal.github}
+            resumeId={resumeId}
+            onEraGenerate={handleEraGenerate}
           />
         );
       case 'Extra Curricular Activity':
@@ -684,6 +732,7 @@ const Details = () => {
             selections={getSelectedIds()}
             onToggle={(id) => toggleSelection('Extra Curricular Activity', id)}
             onChange={updateEntry(setActivityEntries)}
+            onEraGenerate={handleEraGenerate}
           />
         );
       case 'Create Resume':
@@ -697,6 +746,8 @@ const Details = () => {
             isStale={isResumeStale}
             onCreateResume={handleCreateResume}
             onDownload={handleDownloadResume}
+            enhanceProjects={enhanceProjects}
+            onEnhanceProjectsChange={setEnhanceProjects}
           />
         );
       default:
@@ -706,7 +757,7 @@ const Details = () => {
 
   const isTabOverview = currentTab === 'Tab Overview';
   const isCreateResumeTab = currentTab === 'Create Resume';
-  const isContentTab = !isTabOverview && !isCreateResumeTab;
+  const isContentTab = !isTabOverview && !isCreateResumeTab; // eslint-disable-line no-unused-vars
   const isRepeatableTab = REPEATABLE_SECTIONS.includes(currentTab);
 
   // Determine what Add modal should show
@@ -958,6 +1009,57 @@ const Details = () => {
               >
                 {renaming ? 'Saving...' : 'Save'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ERA Preview Modal */}
+      {eraModal && (
+        <div className="modal-overlay" onClick={() => !eraModal.loading && setEraModal(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="modal-header">Generate with ERA</div>
+            <div className="modal-body">
+              {eraModal.loading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0' }}>
+                  <div className="resumes-spinner" />
+                  <span>Generating enhanced description...</span>
+                </div>
+              ) : eraModal.error ? (
+                <div style={{ color: '#ef4444' }}>{eraModal.error}</div>
+              ) : (
+                <>
+                  <label style={{ display: 'block', marginBottom: 8 }}>Generated Description</label>
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: 6,
+                    padding: 14,
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                    {eraModal.result}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button
+                className="modal-btn-cancel"
+                onClick={() => setEraModal(null)}
+                disabled={eraModal.loading}
+              >
+                {eraModal.result ? 'Dismiss' : 'Cancel'}
+              </button>
+              {eraModal.result && (
+                <button
+                  className="modal-btn-confirm"
+                  onClick={handleEraAccept}
+                >
+                  Accept
+                </button>
+              )}
             </div>
           </div>
         </div>
