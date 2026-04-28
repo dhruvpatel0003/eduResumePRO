@@ -15,7 +15,8 @@ jest.mock('../../utils/sendEmail');
 jest.mock('jsonwebtoken');
 jest.mock('../../metrics', () => ({
   userSignups: { inc: jest.fn() },
-  logins: { inc: jest.fn() }
+  logins: { inc: jest.fn() },
+  failedLoginAttemptsTotal: { inc: jest.fn() }
 }));
 
 describe('Auth Controller', () => {

@@ -13,6 +13,14 @@ describe('Notification Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.error.mockRestore();
+  });
+
   describe('getNotifications', () => {
     it('should return 200 with notifications', async () => {
       const mockNotifications = [{ _id: '1', content: 'test' }];
