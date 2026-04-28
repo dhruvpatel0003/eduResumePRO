@@ -179,9 +179,9 @@ const Details = () => {
           setEducationEntries(info.education.map((e, i) => ({
             id: e._id || String(100 + i),
             degree: e.degree || '',
-            program: e.fieldOfStudy || e.program || '',
-            location: e.institution || e.location || '',
-            cgpa: e.gpa || e.cgpa || '',
+            program: e.field || '',
+            location: e.institution || '',
+            cgpa: e.grade || '',
             startDate: e.startDate || '',
             endDate: e.endDate || '',
           })));
@@ -222,7 +222,7 @@ const Details = () => {
             location: e.location || '',
             startDate: e.startDate || '',
             endDate: e.endDate || '',
-            role: e.title || e.role || '',
+            role: e.position || '',
             description: e.description || (e.highlights || []).join('\n') || '',
           })));
         }
@@ -237,7 +237,7 @@ const Details = () => {
             endDate: p.endDate || '',
             role: p.role || '',
             description: p.description || (p.highlights || []).join('\n') || '',
-            githubUrl: p.url || p.githubUrl || '',
+            githubUrl: p.link || '',
           })));
         }
 
@@ -463,9 +463,9 @@ const Details = () => {
     if (activeSections.includes('Education')) {
       info.education = educationEntries.map(e => ({
         degree: e.degree,
-        fieldOfStudy: e.program,
+        field: e.program,
         institution: e.location,
-        gpa: e.cgpa,
+        grade: e.cgpa,
         startDate: e.startDate,
         endDate: e.endDate,
       }));
@@ -486,7 +486,7 @@ const Details = () => {
         location: e.location,
         startDate: e.startDate,
         endDate: e.endDate,
-        title: e.role,
+        position: e.role,
         description: e.description,
       }));
     }
@@ -499,7 +499,7 @@ const Details = () => {
         endDate: p.endDate,
         role: p.role,
         description: p.description,
-        url: p.githubUrl,
+        link: p.githubUrl,
       }));
     }
 
