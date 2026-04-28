@@ -12,13 +12,14 @@ const githubRoutes = require('./routes/githubRoutes');
 const hunterRoutes = require('./routes/hunterRoutes');
 const reportRoutes = require("./routes/reportRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const applicationRoutes = require('./routes/applicationRoutes');
 const mongoose = require('mongoose');
 const { initGridFS } = require('./config/gridfs');
 
 // Prometheus metrics
 const promBundle = require('express-prom-bundle');
 const client = require('prom-client');
-const { register } = require('./metrics');
+const { register, apiErrorsTotal, activeDbConnections } = require('./metrics');
 
 
 // Load environment variables
@@ -51,6 +52,12 @@ if (process.env.NODE_ENV !== 'test') {
   connectDB().then(async () => {
     console.log('✅ MongoDB connected');
     
+    // Track active connections
+    setInterval(() => {
+      const activeConnections = mongoose.connection.base.connections.reduce((acc, conn) => acc + Object.keys(conn.models).length > 0 ? 1 : 0, 0); // Simplified count, or just monitor state
+      activeDbConnections.set(mongoose.connection.readyState === 1 ? 1 : 0); 
+    }, 10000);
+
     // Initialize GridFS buckets AFTER DB connection
     const db = mongoose.connection.db;
     initGridFS(db);
@@ -83,10 +90,15 @@ app.use('/api/github', githubRoutes);
 app.use('/api/hunter', hunterRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // Track 500 errors
+  apiErrorsTotal.inc({ endpoint: req.path, status_code: 500 });
+
   res.status(500).json({ 
     message: 'Internal Server Error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -95,6 +107,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
+  apiErrorsTotal.inc({ endpoint: req.path, status_code: 404 });
   res.status(404).json({ message: 'Route not found' });
 });
 

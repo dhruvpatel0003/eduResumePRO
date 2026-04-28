@@ -4,7 +4,7 @@ const {
   extractResumeText,
   analyzeJobMatch,
 } = require("../utils/hunterService");
-const { jobsAnalyzed } = require("../metrics");
+const { jobsAnalyzed, externalApiDurationSeconds } = require("../metrics");
 
 class HunterController {
   static async getDynamicCompanies(req, res) {
@@ -29,9 +29,11 @@ class HunterController {
         api_key: process.env.SERPAPI_KEY,
       };
 
+      const endTimer = externalApiDurationSeconds.startTimer({ service: 'serpapi' });
       const response = await axios.get("https://serpapi.com/search.json", {
         params: serpParams,
       });
+      endTimer();
 
       const companies =
         response.data.jobs_results?.map((job) => ({
@@ -83,9 +85,11 @@ class HunterController {
         api_key: process.env.SERPAPI_KEY,
       };
 
+      const endTimer = externalApiDurationSeconds.startTimer({ service: 'serpapi' });
       const response = await axios.get("https://serpapi.com/search.json", {
         params: serpParams,
       });
+      endTimer();
 
       const jobs =
         response.data.jobs_results?.map((job) => ({

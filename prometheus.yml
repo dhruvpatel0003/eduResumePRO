@@ -5,7 +5,7 @@ scrape_configs:
   # Monitor your backend (add /metrics endpoint)
   - job_name: 'eduresume-backend'
     static_configs:
-      - targets: ['backend:5000']
+      - targets: ['host.docker.internal:5000']
     metrics_path: '/metrics'
 
   # Docker container metrics (cAdvisor)
