@@ -15,6 +15,14 @@ describe('Description Controller', () => {
     jest.clearAllMocks();
   });
 
+  beforeAll(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.error.mockRestore();
+  });
+
   describe('generateDescription', () => {
     it('should return 400 if type is invalid', async () => {
       req.body = { type: 'invalid_type', brief: 'test' };
