@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { externalApiDurationSeconds } = require("../metrics");
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -8,6 +9,7 @@ async function generateResumeWithPerplexity(resumeData, templateInstructions) {
   try {
     // **Perplexity DOES NOT support vision/PDF uploads**
     // Use text-only with template instructions
+    const endTimer = externalApiDurationSeconds.startTimer({ service: 'perplexity' });
     const response = await axios.post(
       PERPLEXITY_API_URL,
       {
@@ -33,6 +35,7 @@ async function generateResumeWithPerplexity(resumeData, templateInstructions) {
         },
       },
     );
+    endTimer();
 
     return response.data.choices[0].message.content;
   } catch (error) {
@@ -226,6 +229,7 @@ Return ONLY JSON with bullet-level suggestions:
 CRITICAL: suggestedValue must be SINGLE LINE strings, never multi-line or full sections.
 `;
 
+  const endTimer = externalApiDurationSeconds.startTimer({ service: 'perplexity' });
   const response = await axios.post(
     "https://api.perplexity.ai/chat/completions",
     {
@@ -247,6 +251,7 @@ CRITICAL: suggestedValue must be SINGLE LINE strings, never multi-line or full s
       },
     },
   );
+  endTimer();
 
   return JSON.parse(response.data.choices[0].message.content);
 }

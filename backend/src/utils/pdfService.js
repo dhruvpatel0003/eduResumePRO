@@ -33,7 +33,16 @@ async function convertMarkdownToPDF(markdownContent) {
   `;
 
   // Use Puppeteer to generate PDF
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ 
+    headless: true,
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ],
+    protocolTimeout: 180000
+  });
   const page = await browser.newPage();
   await page.setContent(htmlContent);
   

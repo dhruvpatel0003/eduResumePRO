@@ -4,7 +4,7 @@ const generateToken = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail.js");
 const Notification = require("../models/Notification");
-const { userSignups, logins } = require("../metrics");
+const { userSignups, logins, failedLoginAttemptsTotal } = require("../metrics");
 
 const JWT_SECRET = process.env.JWT_SECRET || "eduresume_secret_dummy";
 const SALT_ROUNDS = 10;
@@ -73,11 +73,13 @@ const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      failedLoginAttemptsTotal.inc();
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
+      failedLoginAttemptsTotal.inc();
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
