@@ -120,15 +120,6 @@ const ProjectsTab = ({ entries, selections, onToggle, onChange, githubUrl, resum
                   />
                 </div>
                 <div className="details-form-group">
-                  <label>Location</label>
-                  <input
-                    type="text"
-                    value={entry.location}
-                    onChange={(e) => onChange(entry.id, 'location', e.target.value)}
-                    placeholder="Location"
-                  />
-                </div>
-                <div className="details-form-group">
                   <label>Start Date</label>
                   <input
                     type="date"
@@ -142,15 +133,6 @@ const ProjectsTab = ({ entries, selections, onToggle, onChange, githubUrl, resum
                     type="date"
                     value={entry.endDate}
                     onChange={(e) => onChange(entry.id, 'endDate', e.target.value)}
-                  />
-                </div>
-                <div className="details-form-group">
-                  <label>Role</label>
-                  <input
-                    type="text"
-                    value={entry.role}
-                    onChange={(e) => onChange(entry.id, 'role', e.target.value)}
-                    placeholder="Your Role"
                   />
                 </div>
                 <div className="details-form-group">

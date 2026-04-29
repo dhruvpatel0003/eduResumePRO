@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ActivityTab = ({ entries, selections, onToggle, onChange, onEraGenerate }) => {
+const ActivityTab = ({ entries, selections, onToggle, onChange }) => {
   return (
     <div>
       {entries.map((entry, index) => (
@@ -24,53 +24,21 @@ const ActivityTab = ({ entries, selections, onToggle, onChange, onEraGenerate })
               />
             </div>
             <div className="details-form-group">
-              <label>Location</label>
+              <label>Issuer</label>
               <input
                 type="text"
                 value={entry.location}
                 onChange={(e) => onChange(entry.id, 'location', e.target.value)}
-                placeholder="Location"
+                placeholder="Issuing organization"
               />
             </div>
             <div className="details-form-group">
-              <label>Start Date</label>
+              <label>Date</label>
               <input
                 type="date"
                 value={entry.startDate}
                 onChange={(e) => onChange(entry.id, 'startDate', e.target.value)}
               />
-            </div>
-            <div className="details-form-group">
-              <label>End Date</label>
-              <input
-                type="date"
-                value={entry.endDate}
-                onChange={(e) => onChange(entry.id, 'endDate', e.target.value)}
-              />
-            </div>
-            <div className="details-form-group">
-              <label>Your Role</label>
-              <input
-                type="text"
-                value={entry.role}
-                onChange={(e) => onChange(entry.id, 'role', e.target.value)}
-                placeholder="Your Role"
-              />
-            </div>
-            <div className="details-form-group full-width">
-              <label>Activity Description</label>
-              <textarea
-                value={entry.description}
-                onChange={(e) => onChange(entry.id, 'description', e.target.value)}
-                placeholder="Describe the activity"
-              />
-              <button
-                type="button"
-                className="generate-era-link"
-                onClick={() => onEraGenerate && onEraGenerate(entry, 'activity')}
-              >
-                Generate with ERA
-              </button>
             </div>
           </div>
         </div>

@@ -31,17 +31,26 @@ const REPEATABLE_SECTIONS = ['Education', 'Professional Experience', 'Projects',
 let nextId = 100;
 const genId = () => String(nextId++);
 
+// Convert a Date object or ISO string from the backend into the YYYY-MM-DD
+// format that <input type="date"> requires. Returns '' for missing/invalid.
+const toDateInput = (d) => {
+  if (!d) return '';
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const createEntry = (tab) => {
   const id = genId();
   switch (tab) {
     case 'Education':
       return { id, degree: '', program: '', location: '', cgpa: '', startDate: '', endDate: '' };
     case 'Professional Experience':
-      return { id, company: '', location: '', startDate: '', endDate: '', role: '', description: '' };
+      return { id, company: '', startDate: '', endDate: '', role: '', description: '' };
     case 'Projects':
-      return { id, name: '', location: '', startDate: '', endDate: '', role: '', description: '', githubUrl: '' };
+      return { id, name: '', startDate: '', endDate: '', description: '', githubUrl: '' };
     case 'Extra Curricular Activity':
-      return { id, name: '', location: '', startDate: '', endDate: '', role: '', description: '' };
+      return { id, name: '', location: '', startDate: '' };
     default:
       return { id };
   }
@@ -182,8 +191,8 @@ const Details = () => {
             program: e.field || '',
             location: e.institution || '',
             cgpa: e.grade || '',
-            startDate: e.startDate || '',
-            endDate: e.endDate || '',
+            startDate: toDateInput(e.startDate),
+            endDate: toDateInput(e.endDate),
           })));
         }
 
@@ -219,9 +228,8 @@ const Details = () => {
           setExperienceEntries(info.experience.map((e, i) => ({
             id: e._id || String(200 + i),
             company: e.company || '',
-            location: e.location || '',
-            startDate: e.startDate || '',
-            endDate: e.endDate || '',
+            startDate: toDateInput(e.startDate),
+            endDate: toDateInput(e.endDate),
             role: e.position || '',
             description: e.description || (e.highlights || []).join('\n') || '',
           })));
@@ -232,10 +240,8 @@ const Details = () => {
           setProjectEntries(info.projects.map((p, i) => ({
             id: p._id || String(300 + i),
             name: p.name || p.title || '',
-            location: p.location || '',
-            startDate: p.startDate || '',
-            endDate: p.endDate || '',
-            role: p.role || '',
+            startDate: toDateInput(p.startDate),
+            endDate: toDateInput(p.endDate),
             description: p.description || (p.highlights || []).join('\n') || '',
             githubUrl: p.link || '',
           })));
@@ -247,10 +253,7 @@ const Details = () => {
             id: c._id || String(400 + i),
             name: c.name || '',
             location: c.issuer || '',
-            startDate: c.date || '',
-            endDate: '',
-            role: '',
-            description: '',
+            startDate: toDateInput(c.date),
           })));
         }
       } catch (err) {
@@ -268,7 +271,7 @@ const Details = () => {
     setDetailsLastUpdatedAt(Date.now());
   }, []);
 
-  // ERA Generate handler
+  // ERA Generate handler — only 'job' and 'project' are supported (matches schema fields with description).
   const handleEraGenerate = async (entry, type) => {
     const fallback = type === 'job'
       ? [entry.role, entry.company].filter(Boolean).join(' at ')
@@ -277,9 +280,7 @@ const Details = () => {
     const points = brief.split('\n').map(l => l.trim()).filter(Boolean);
     const context = type === 'job'
       ? `${entry.role || ''} at ${entry.company || ''}`.trim()
-      : type === 'project'
-        ? `Project: ${entry.name || ''}`.trim()
-        : `Activity: ${entry.name || ''}`.trim();
+      : `Project: ${entry.name || ''}`.trim();
 
     setEraModal({ entry, type, result: null, loading: true, error: null });
 
@@ -288,11 +289,8 @@ const Details = () => {
       return;
     }
 
-    // Backend accepts only 'job' and 'project'; activities are routed as projects.
-    const apiType = type === 'activity' ? 'project' : type;
-
     try {
-      const data = await eraService.generate(apiType, brief, points, context);
+      const data = await eraService.generate(type, brief, points, context);
       const raw = typeof data === 'string'
         ? data
         : (data.generatedText || data.description || data.result || data.text || '');
@@ -319,8 +317,6 @@ const Details = () => {
       setExperienceEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
     } else if (type === 'project') {
       setProjectEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
-    } else if (type === 'activity') {
-      setActivityEntries(prev => prev.map(e => e.id === entry.id ? { ...e, description: eraModal.result } : e));
     }
     markDetailsUpdated();
     setEraModal(null);
@@ -487,8 +483,8 @@ const Details = () => {
         field: e.program,
         institution: e.location,
         grade: e.cgpa,
-        startDate: e.startDate,
-        endDate: e.endDate,
+        startDate: e.startDate || undefined,
+        endDate: e.endDate || undefined,
       }));
     }
 
@@ -502,25 +498,24 @@ const Details = () => {
     }
 
     if (activeSections.includes('Professional Experience')) {
+      // Backend Resume.experience schema: company, position, startDate, endDate, currentlyWorking, description.
       info.experience = experienceEntries.map(e => ({
         company: e.company,
-        location: e.location,
-        startDate: e.startDate,
-        endDate: e.endDate,
         position: e.role,
+        startDate: e.startDate || undefined,
+        endDate: e.endDate || undefined,
         description: e.description,
       }));
     }
 
     if (activeSections.includes('Projects')) {
+      // Backend Resume.projects schema: name, description, technologies, link, startDate, endDate.
       info.projects = projectEntries.map(p => ({
         name: p.name,
-        location: p.location,
-        startDate: p.startDate,
-        endDate: p.endDate,
-        role: p.role,
         description: p.description,
         link: p.githubUrl,
+        startDate: p.startDate || undefined,
+        endDate: p.endDate || undefined,
       }));
     }
 
@@ -528,7 +523,7 @@ const Details = () => {
       info.certifications = activityEntries.map(a => ({
         name: a.name,
         issuer: a.location,
-        date: a.startDate,
+        date: a.startDate || undefined,
       }));
     }
 

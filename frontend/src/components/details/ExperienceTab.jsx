@@ -24,15 +24,6 @@ const ExperienceTab = ({ entries, selections, onToggle, onChange, onEraGenerate 
               />
             </div>
             <div className="details-form-group">
-              <label>Location</label>
-              <input
-                type="text"
-                value={entry.location}
-                onChange={(e) => onChange(entry.id, 'location', e.target.value)}
-                placeholder="Location"
-              />
-            </div>
-            <div className="details-form-group">
               <label>Start Date</label>
               <input
                 type="date"
