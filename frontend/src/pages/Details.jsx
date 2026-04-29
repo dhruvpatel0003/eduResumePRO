@@ -270,8 +270,11 @@ const Details = () => {
 
   // ERA Generate handler
   const handleEraGenerate = async (entry, type) => {
-    const brief = entry.description || entry.name || '';
-    const points = brief.split('\n').filter(l => l.trim());
+    const fallback = type === 'job'
+      ? [entry.role, entry.company].filter(Boolean).join(' at ')
+      : entry.name || '';
+    const brief = (entry.description || fallback || '').trim();
+    const points = brief.split('\n').map(l => l.trim()).filter(Boolean);
     const context = type === 'job'
       ? `${entry.role || ''} at ${entry.company || ''}`.trim()
       : type === 'project'
@@ -280,10 +283,28 @@ const Details = () => {
 
     setEraModal({ entry, type, result: null, loading: true, error: null });
 
+    if (!brief && points.length === 0) {
+      setEraModal(prev => prev ? { ...prev, error: 'Add a description, role/company, or name before generating.', loading: false } : null);
+      return;
+    }
+
+    // Backend accepts only 'job' and 'project'; activities are routed as projects.
+    const apiType = type === 'activity' ? 'project' : type;
+
     try {
-      const data = await eraService.generate(type, brief, points, context);
-      const generated = data.description || data.result || data.text || data;
-      setEraModal(prev => prev ? { ...prev, result: typeof generated === 'string' ? generated : JSON.stringify(generated), loading: false } : null);
+      const data = await eraService.generate(apiType, brief, points, context);
+      const raw = typeof data === 'string'
+        ? data
+        : (data.generatedText || data.description || data.result || data.text || '');
+      const cleaned = raw
+        .replace(/\*\*(.*?)\*\*/g, '$1')      // strip **bold**
+        .replace(/(?:\s*\[\d+\])+/g, '')       // strip [1], [1][6], etc.
+        .replace(/^\s*[-•*]\s+/gm, '• ')       // normalize bullets
+        .split('\n')
+        .map(l => l.trimEnd())
+        .filter(Boolean)
+        .join('\n');
+      setEraModal(prev => prev ? { ...prev, result: cleaned, loading: false } : null);
     } catch (err) {
       setEraModal(prev => prev ? { ...prev, error: typeof err === 'string' ? err : 'Failed to generate.', loading: false } : null);
     }
