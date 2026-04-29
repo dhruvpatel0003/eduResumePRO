@@ -4,6 +4,109 @@ import hunterService from '../services/hunterService';
 import resumeService from '../services/resumeService';
 import '../styles/hunter.css';
 
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'you', 'your', 'are', 'our', 'will', 'have',
+  'this', 'that', 'from', 'into', 'they', 'their', 'them', 'has', 'was', 'were',
+  'been', 'being', 'but', 'not', 'all', 'any', 'can', 'may', 'who', 'what',
+  'when', 'where', 'how', 'why', 'which', 'about', 'also', 'must', 'should',
+  'would', 'could', 'team', 'work', 'role', 'job', 'company', 'position',
+  'years', 'year', 'experience', 'including', 'such', 'other', 'more', 'most',
+]);
+
+function tokenize(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+#./\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+}
+
+function buildResumeText(templateInfo) {
+  if (!templateInfo) return '';
+  const parts = [];
+  parts.push(templateInfo.personalInfo?.summary || '');
+  (templateInfo.experience || []).forEach(exp => {
+    parts.push(exp.title || exp.position || '');
+    parts.push(exp.description || '');
+    if (Array.isArray(exp.bullets)) parts.push(exp.bullets.join(' '));
+    if (Array.isArray(exp.technologies)) parts.push(exp.technologies.join(' '));
+  });
+  (templateInfo.projects || []).forEach(proj => {
+    parts.push(proj.name || '');
+    parts.push(proj.description || '');
+    if (Array.isArray(proj.bullets)) parts.push(proj.bullets.join(' '));
+    if (Array.isArray(proj.technologies)) parts.push(proj.technologies.join(' '));
+  });
+  if (Array.isArray(templateInfo.skills)) parts.push(templateInfo.skills.join(' '));
+  (templateInfo.education || []).forEach(edu => {
+    parts.push(edu.degree || edu.fieldOfStudy || '');
+    parts.push(edu.coursework || '');
+  });
+  return parts.join(' ');
+}
+
+function analyzeResumeAgainstJob(templateInfo, job) {
+  const resumeText = buildResumeText(templateInfo);
+  const resumeTokens = new Set(tokenize(resumeText));
+  const jobTitle = job.title || '';
+  const jobDescription = job.description || '';
+  const jobTokens = tokenize(`${jobTitle} ${jobDescription}`);
+
+  // Count frequency of each job token to surface most important keywords
+  const freq = {};
+  jobTokens.forEach(t => { freq[t] = (freq[t] || 0) + 1; });
+  const uniqueJobTokens = Object.keys(freq);
+
+  if (uniqueJobTokens.length === 0) {
+    return {
+      atsScore: 0,
+      matchScore: 0,
+      feedback: [{
+        id: 'fb-no-desc',
+        fieldPath: '',
+        type: 'info',
+        originalValue: '',
+        suggestedValue: '',
+        note: 'This job listing has no description available, so a keyword match could not be performed. Try selecting a different role.',
+        accepted: false,
+      }],
+    };
+  }
+
+  const matched = uniqueJobTokens.filter(t => resumeTokens.has(t));
+  const missing = uniqueJobTokens
+    .filter(t => !resumeTokens.has(t))
+    .sort((a, b) => freq[b] - freq[a])
+    .slice(0, 12);
+
+  const matchScore = Math.round((matched.length / uniqueJobTokens.length) * 100);
+  const atsScore = matchScore;
+
+  const feedback = missing.map((kw, idx) => ({
+    id: `fb-${idx}`,
+    fieldPath: '',
+    type: 'keyword',
+    originalValue: '',
+    suggestedValue: kw,
+    note: `Consider incorporating "${kw}" into your resume — it appears ${freq[kw]} time${freq[kw] === 1 ? '' : 's'} in this job description but is missing from your resume.`,
+    accepted: false,
+  }));
+
+  if (feedback.length === 0) {
+    feedback.push({
+      id: 'fb-strong-match',
+      fieldPath: '',
+      type: 'info',
+      originalValue: '',
+      suggestedValue: '',
+      note: 'Strong keyword match — your resume already covers the key terms in this job description.',
+      accepted: false,
+    });
+  }
+
+  return { atsScore, matchScore, feedback };
+}
+
 const Hunter = () => {
   // Resume list
   const [resumes, setResumes] = useState([]);
@@ -98,7 +201,7 @@ const Hunter = () => {
         return title.includes('software') || title.includes('developer') || title.includes('engineer');
       });
 
-  // Hunt/Analyze
+  // Hunt/Analyze (client-side keyword analysis — no backend /analyze call)
   const handleHunt = async () => {
     if (!selectedResume || !selectedJob) return;
     setLoading(true);
@@ -107,30 +210,14 @@ const Hunter = () => {
     setAnalysis(null);
 
     try {
-      const jobPayload = [{
-        jobId: selectedJob.jobId || selectedJob.id,
-        title: selectedJob.title,
-        company: selectedJob.company || selectedCompany,
-        location: selectedJob.location,
-        description: selectedJob.description || '',
-      }];
-      const data = await hunterService.analyze(selectedResume, jobPayload);
-      // Normalize the response
-      const result = data.analysis || data;
-      const feedback = (result.aiSuggestions || result.feedback || result.comments || []).map((item, idx) => ({
-        id: item.id || `fb-${idx}`,
-        fieldPath: item.fieldPath || '',
-        type: item.type || 'suggestion',
-        originalValue: item.originalValue || '',
-        suggestedValue: item.suggestedValue || '',
-        note: item.note || item.message || '',
-        accepted: false,
-      }));
+      const resumeData = await resumeService.getDetails(selectedResume);
+      const templateInfo = resumeData.resume?.templateInfo || resumeData.templateInfo || {};
+      const result = analyzeResumeAgainstJob(templateInfo, selectedJob);
 
       setAnalysis({
-        atsScore: result.atsScore ?? result.ats_score ?? null,
-        matchScore: result.matchScore ?? result.match_score ?? null,
-        feedback,
+        atsScore: result.atsScore,
+        matchScore: result.matchScore,
+        feedback: result.feedback,
       });
     } catch (err) {
       setError(typeof err === 'string' ? err : 'Could not analyze resume. Please try again.');
@@ -180,16 +267,17 @@ const Hunter = () => {
   };
 
   const hasAcceptedFeedback = analysis?.feedback.some(f => f.accepted) || false;
+  const hasActionableAcceptedFeedback = analysis?.feedback.some(f => f.accepted && f.fieldPath) || false;
   const allAccepted = analysis?.feedback.length > 0 && analysis.feedback.every(f => f.accepted);
 
   // Update Resume with accepted AI feedback
   const handleUpdateResume = async () => {
-    if (!hasAcceptedFeedback || !selectedResume) return;
+    if (!hasActionableAcceptedFeedback || !selectedResume) return;
     setUpdateLoading(true);
     setError('');
     try {
       const acceptedComments = analysis.feedback
-        .filter(f => f.accepted)
+        .filter(f => f.accepted && f.fieldPath)
         .map(f => ({
           fieldPath: f.fieldPath,
           type: f.type,
@@ -424,7 +512,7 @@ const Hunter = () => {
               <button
                 className="hunter-action-link"
                 onClick={handleUpdateResume}
-                disabled={!hasAcceptedFeedback || updateLoading}
+                disabled={!hasActionableAcceptedFeedback || updateLoading}
               >
                 {updateLoading ? 'Updating...' : 'Update Resume'}
               </button>
