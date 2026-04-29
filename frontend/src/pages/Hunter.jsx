@@ -128,6 +128,16 @@ const Hunter = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobFilter, setJobFilter] = useState('all');
+  const [expandedJobs, setExpandedJobs] = useState(() => new Set());
+
+  const toggleJobExpansion = (key) => {
+    setExpandedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // Analysis results
   const [analysis, setAnalysis] = useState(null);
@@ -441,10 +451,12 @@ const Hunter = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filteredJobs.map((job, idx) => {
+              const jobKey = job.jobId || job.id || `job-${idx}`;
               const isSelected = selectedJob?.jobId === job.jobId || selectedJob?.id === job.id;
+              const isExpanded = expandedJobs.has(jobKey);
               return (
                 <div
-                  key={job.jobId || job.id || idx}
+                  key={jobKey}
                   style={{
                     border: `1px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
                     borderRadius: 8,
@@ -454,10 +466,65 @@ const Hunter = () => {
                   }}
                   onClick={() => setSelectedJob(job)}
                 >
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>{job.title}</div>
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>
-                    {job.company || selectedCompany} {job.location ? `| ${job.location}` : ''}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{job.title}</div>
+                      <div style={{ fontSize: 13, color: '#6b7280' }}>
+                        {job.company || selectedCompany} {job.location ? `| ${job.location}` : ''}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="hunter-action-link"
+                      onClick={(e) => { e.stopPropagation(); toggleJobExpansion(jobKey); }}
+                      aria-expanded={isExpanded}
+                      aria-label={isExpanded ? 'Hide job description' : 'Show job description'}
+                      style={{
+                        border: '1px solid #d1d5db',
+                        borderRadius: 6,
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        background: '#fff',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {isExpanded ? 'Hide' : 'Details'}
+                    </button>
                   </div>
+
+                  {isExpanded && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTop: '1px solid #e5e7eb',
+                        fontSize: 13,
+                        color: '#374151',
+                        whiteSpace: 'pre-wrap',
+                        cursor: 'default',
+                      }}
+                    >
+                      {job.description
+                        ? job.description
+                        : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>No description available for this listing.</span>}
+                      {job.postedAt && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>Posted: {job.postedAt}</div>
+                      )}
+                      {job.url && (
+                        <div style={{ marginTop: 8 }}>
+                          <a
+                            href={job.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 13, color: '#2563eb' }}
+                          >
+                            View original listing
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
